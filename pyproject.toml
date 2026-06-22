@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ovos-ww-plugin-wakeforge"
+dynamic = ["version"]
+description = "OVOS wake word plugin for models trained with wakeforge"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{name = "JarbasAi", email = "jarbasai@mailfence.com"}]
+requires-python = ">=3.10"
+
+keywords = [
+    "mycroft",
+    "ovos",
+    "plugin",
+    "wake",
+    "word",
+    "wakeforge",
+]
+dependencies = [
+    "onnxruntime>=1.20",
+    "numpy",
+    "requests",
+    "ovos-plugin-manager>=2.1.0,<3.0.0",
+    "ovos-utils>=0.0.14,<1.0.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest<9",
+    "onnx",
+    "ovoscope>=0.19.0a1,<1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge"
+Repository = "https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge"
+
+[project.entry-points."opm.wake_word"]
+ovos-ww-plugin-wakeforge = "ovos_ww_plugin_wakeforge:WakeForgeHotwordPlugin"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["ovos_ww_plugin_wakeforge*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "ovos_ww_plugin_wakeforge.version.__version__"}
