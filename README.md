@@ -1,12 +1,12 @@
 # ovos-ww-plugin-wakeforge
 
-OVOS wake-word plugin for custom models trained with
+An OVOS wake-word plugin for custom models trained with
 [wakeforge](https://github.com/TigreGotico/wakeforge).
 
-wakeforge trains a wake-word detector from a single phrase and exports a two-file
-ONNX pipeline — a feature extractor and a classifier head. This plugin loads that
-pipeline and runs it as an always-on hotword engine. Runtime is pure
-`onnxruntime` + `numpy` (no PyTorch).
+Wakeforge trains a wake-word detector from a single phrase and exports a two-file
+ONNX pipeline: a feature extractor and a classifier head. This plugin loads that
+pipeline and runs it as an always-on hotword engine. The runtime uses
+`onnxruntime` and `numpy` only. It does not need PyTorch.
 
 ## Install
 
@@ -24,7 +24,7 @@ wakeforge-quickstart "hey jarvis" ./hey_jarvis
 
 ## Configure
 
-In `mycroft.conf`, point a hotword at the two ONNX files (local paths or URLs):
+In `mycroft.conf`, point a hotword at the two ONNX files. Use local paths or URLs.
 
 ```json
 {
@@ -61,6 +61,12 @@ In `mycroft.conf`, point a hotword at the two ONNX files (local paths or URLs):
 | `hidden_dim` | `128` | GRU hidden size of the streaming head |
 
 URL models are cached under `${XDG_DATA_HOME}/wakeforge/`.
+
+## Related projects
+
+- [TigreGotico/wakeforge](https://github.com/TigreGotico/wakeforge) trains the ONNX models this plugin loads.
+- [OpenVoiceOS/ovos-plugin-manager](https://github.com/OpenVoiceOS/ovos-plugin-manager) loads and manages this plugin alongside other STT, TTS, and wake-word plugins.
+- [OpenVoiceOS/ovos-ww-plugin-precise-onnx](https://github.com/OpenVoiceOS/ovos-ww-plugin-precise-onnx) is a sibling wake-word plugin that runs Precise models through ONNX.
 
 ## Credits
 
