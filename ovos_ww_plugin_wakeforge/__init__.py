@@ -88,6 +88,11 @@ class WakeForgeHotwordPlugin(HotWordEngine):
             self.engine = OnnxWakeWordInferencer(featurizer, model, vad_path=vad,
                                                  device="cpu")
         self._cache = None
+        # Audio is scored in fixed blocks whatever chunk size the listener
+        # sends, so the smoother's patience counts time, not chunks, and the
+        # featurizer never sees fewer samples than its STFT window.
+        self.block = int(16000 * float(self.config.get("block_ms", 80)) / 1000)
+        self._buffer = np.zeros(0, dtype=np.float32)
         LOG.info(f"wakeforge wake word '{self.key_phrase}' loaded "
                  f"(streaming={self.streaming}, threshold={self.threshold})")
 
@@ -117,18 +122,21 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         return model_path
 
     def update(self, chunk):
-        """Process a raw 16-bit PCM chunk and update the trigger flag."""
+        """Buffer a raw 16-bit PCM chunk and score every complete block."""
         audio = np.frombuffer(chunk, dtype=np.int16).astype(np.float32) / 32768.0
         if audio.size == 0:
             return
-        if self.streaming:
-            prob = self.engine.push(audio)
-            self.smoother.update(prob)
-        else:
-            _, self._cache = self.engine.infer_streaming(
-                audio, self._cache, smoother=self.smoother)
-        if self.smoother.is_triggered():
-            self.trigger_flag = True
+        self._buffer = np.concatenate([self._buffer, audio])
+        while self._buffer.size >= self.block:
+            block, self._buffer = self._buffer[:self.block], self._buffer[self.block:]
+            if self.streaming:
+                prob = self.engine.push(block)
+                self.smoother.update(prob)
+            else:
+                _, self._cache = self.engine.infer_streaming(
+                    block, self._cache, smoother=self.smoother)
+            if self.smoother.is_triggered():
+                self.trigger_flag = True
 
     def found_wake_word(self):
         """Return True (once) if the wake word fired since the last call."""
@@ -142,5 +150,6 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         """Clear streaming/smoothing state between detections."""
         self.smoother.reset()
         self._cache = None
+        self._buffer = np.zeros(0, dtype=np.float32)
         if self.streaming:
             self.engine.reset()
