@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.2a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.0.2a1) (2026-09-18)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.0.1a2...0.0.2a1)
+
+**Merged pull requests:**
+
+- fix: score audio in fixed blocks so decisions do not depend on the listener chunk size [\#5](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/5) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [0.0.1a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.0.1a2) (2026-08-01)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/a184d891b6f0d8252e1725951775927af086aadd...0.0.1a2)
