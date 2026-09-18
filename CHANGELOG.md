@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.4a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.0.4a1) (2026-09-18)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.0.3a1...0.0.4a1)
+
+**Merged pull requests:**
+
+- Update dependency ovoscope to v1 [\#3](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/3) ([renovate[bot]](https://github.com/apps/renovate))
+
 ## [0.0.3a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.0.3a1) (2026-09-18)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.0.2a1...0.0.3a1)
