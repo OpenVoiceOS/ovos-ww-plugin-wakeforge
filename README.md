@@ -56,6 +56,7 @@ In `mycroft.conf`, point a hotword at the two ONNX files. Use local paths or URL
 | `debounce_sec` | `1.0` | minimum seconds between triggers |
 | `window_size` | `5` | smoother rolling window (mean/max) |
 | `ema_alpha` | `0.3` | EMA responsiveness |
+| `block_ms` | `80` | audio is scored in blocks of this length whatever chunk size the listener sends, so patience counts time and the featurizer always gets a full block |
 | `streaming` | `false` | use the stateful streaming (GRU) head |
 | `gru_window` | `100` | window the streaming head was exported with |
 | `hidden_dim` | `128` | GRU hidden size of the streaming head |
