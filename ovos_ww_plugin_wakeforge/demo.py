@@ -76,7 +76,6 @@ class OpenWakeWord(Engine):
     name = "openwakeword"
 
     def __init__(self, word, threshold=0.5):
-        import inspect
         from pathlib import Path
 
         import openwakeword
@@ -85,10 +84,7 @@ class OpenWakeWord(Engine):
         if not model.exists():
             from openwakeword.utils import download_models
             download_models([model.stem])
-        if "wakeword_models" in inspect.signature(Model).parameters:
-            self.model = Model(wakeword_models=[str(model)], inference_framework="onnx")
-        else:
-            self.model = Model(wakeword_model_paths=[str(model)])
+        self.model = Model(wakeword_models=[str(model)], inference_framework="onnx")
         self.line = threshold
 
     def feed(self, pcm):
@@ -219,7 +215,7 @@ def render(comparison, skipped, word, level_db, clipping, now):
     from rich.text import Text
     width = 40
     table = Table(expand=True, show_edge=False, box=None, padding=(0, 1))
-    table.add_column("engine", width=16)
+    table.add_column("engine", width=21)
     table.add_column("probability", ratio=1)
     table.add_column("", width=8, justify="right")
     table.add_column("detections", width=10, justify="right")

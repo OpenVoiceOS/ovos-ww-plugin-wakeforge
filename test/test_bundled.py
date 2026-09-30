@@ -71,6 +71,8 @@ def test_bundled_heads_io_and_metadata(word):
     assert meta["pretrained_featurizer"] == "wakehubert"
     assert meta["window_frames"] == "75"
     assert expected["license_has"] in meta["license"]
+    if word == "hey_mycroft":
+        assert meta["training_data"] == expected["training_data_has"]
     assert expected["training_data_has"] in meta["training_data"]
     if "synthetic" in expected["training_data_has"]:
         assert "CC" in meta["training_data"] and "4.0" in meta["training_data"]
