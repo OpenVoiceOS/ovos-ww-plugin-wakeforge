@@ -1,13 +1,15 @@
-Ready wake-word models: alexa.onnx, hey_mycroft.onnx, wake_up.onnx
+Ready wake-word models: alexa.onnx, hey_mycroft.onnx, hey_mycroft_synthetic.onnx,
+wake_up.onnx
 Copyright TigreGotico. Distributed with this package under the Apache License,
 Version 2.0.
 
-Each model is a GRU classifier head on features from the WakeHuBERT tiny
+Each model is a recurrent classifier head on features from the WakeHuBERT tiny
 featurizer bundled in ../featurizers/wakehubert-tiny (TigreGotico/wakehubert-tiny,
 Apache-2.0). Its output is Platt-calibrated: sigmoid(output) is the probability
 that the 1.5 s window holds the wake word.
 
-The heads were trained on synthetic speech only. Training data:
+hey_mycroft.onnx was trained on human recordings. alexa.onnx, wake_up.onnx and
+hey_mycroft_synthetic.onnx were trained on synthetic speech only. Training data:
 
   TigreGotico/synthetic-wakeword-alexa        CC BY 4.0
   TigreGotico/synthetic-wakeword-hey_mycroft  CC BY 4.0
