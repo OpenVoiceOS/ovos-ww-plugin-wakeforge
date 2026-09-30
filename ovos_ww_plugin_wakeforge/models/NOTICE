@@ -1,4 +1,4 @@
-Ready wake-word models: alexa.onnx, hey_mycroft.onnx
+Ready wake-word models: alexa.onnx, hey_mycroft.onnx, wake_up.onnx
 Copyright TigreGotico. Distributed with this package under the Apache License,
 Version 2.0.
 
@@ -11,8 +11,10 @@ The heads were trained on synthetic speech only. Training data:
 
   TigreGotico/synthetic-wakeword-alexa        CC BY 4.0
   TigreGotico/synthetic-wakeword-hey_mycroft  CC BY 4.0
+  TigreGotico/synthetic-wakeword-wake_up      CC BY 4.0
       https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-alexa
       https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-hey_mycroft
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-wake_up
       Wake-word positives made with text-to-speech voices and voice conversion.
 
   TigreGotico/not-wake-words-speech-en        CC BY 4.0

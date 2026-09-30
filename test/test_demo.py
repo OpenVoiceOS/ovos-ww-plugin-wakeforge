@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 import soundfile as sf
 from rich.console import Console
 
@@ -76,6 +77,17 @@ def test_refractory_ignores_detections_for_two_seconds():
     assert comparison.counts == {"loud": 4} and len(comparison.log) == 4
 
 
+
+def test_wake_up_has_no_other_engine_and_skips_cleanly(offline):
+    # wake_up is only bundled with this plugin; openWakeWord, microWakeWord and
+    # precise-onnx have no model for it and must be skipped cleanly, not crash
+    # the comparison.
+    args = demo.parse_args(["--wakeword", "wake_up"])
+    engines, skipped = demo.build_engines(args)
+    assert [e.name for e in engines] == ["wakehubert"]
+    assert {s.split(":")[0] for s in skipped} == {"openwakeword", "microwakeword", "precise-onnx"}
+
+
 def test_only_selects_engines_and_failures_are_reported(monkeypatch):
     args = demo.parse_args(["--only", "precise-onnx", "--wakeword", "alexa"])
     engines, skipped = demo.build_engines(args)
@@ -94,9 +106,10 @@ def test_panel_shows_bars_triggers_detections_and_failures():
         assert expected in text, expected
 
 
-def test_wakehubert_engine_scores_a_clip_through_the_plugin(offline):
-    engine = demo.WakeHuBERT("hey_mycroft")
-    assert engine.line == 0.98
-    found = demo.score_file(str(CLIPS / "hey_mycroft.wav"), [engine])
+@pytest.mark.parametrize("word, trigger", [("hey_mycroft", 0.984), ("wake_up", 0.990)])
+def test_wakehubert_engine_scores_a_clip_through_the_plugin(offline, word, trigger):
+    engine = demo.WakeHuBERT(word)
+    assert engine.line == trigger
+    found = demo.score_file(str(CLIPS / f"{word}.wav"), [engine])
     assert len(found["wakehubert"]) == 1
     assert 0.0 < engine.score <= 1.0
