@@ -14,6 +14,21 @@ This plugin only runs models. To train a model for your own wake word, use
 pip install --pre ovos-ww-plugin-wakeforge
 ```
 
+## Try it on your laptop
+
+You don't need OpenVoiceOS to try the models. The demo listens to your microphone and runs the ready
+model beside openWakeWord, microWakeWord and Precise, so you can compare them with your own voice:
+
+```bash
+pip install --pre "ovos-ww-plugin-wakeforge[demo]"
+ovos-wakeforge-demo --wakeword hey_mycroft
+```
+
+![The live demo: one probability bar per engine, green when it detects the wake word](https://raw.githubusercontent.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/dev/docs/demo.svg)
+
+Say the wake word. Each bar shows one engine's wake-word probability, and `|` marks where that engine
+triggers. See [Compare against other engines](#compare-against-other-engines) for the options.
+
 ## Use a ready model
 
 Put this in `mycroft.conf`:
@@ -101,8 +116,8 @@ Pretrained featurizers other than the bundled `wakehubert` and `wakehubert-int8`
 
 ## Compare against other engines
 
-`ovos-wakeforge-demo` listens to the microphone and runs the ready model next to three
-other wake-word engines, each fed the same 80 ms chunks:
+`ovos-wakeforge-demo` listens to the microphone and runs the ready model next to the other
+wake-word engines that have a model for the word, each fed the same 80 ms chunks:
 
 ```bash
 pip install --pre "ovos-ww-plugin-wakeforge[demo]"
