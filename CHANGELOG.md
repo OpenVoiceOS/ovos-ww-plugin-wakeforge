@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.1.0a1) (2026-09-30)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.0.4a1...0.1.0a1)
+
+**Merged pull requests:**
+
+- feat: WakeHuBERT models, bundled alexa and hey mycroft models, comparison demo [\#7](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/7) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.0.4a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.0.4a1) (2026-09-18)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.0.3a1...0.0.4a1)
