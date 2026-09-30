@@ -85,7 +85,8 @@ def test_wake_up_has_no_other_engine_and_skips_cleanly(offline):
     args = demo.parse_args(["--wakeword", "wake_up"])
     engines, skipped = demo.build_engines(args)
     assert [e.name for e in engines] == ["wakehubert"]
-    assert {s.split(":")[0] for s in skipped} == {"openwakeword", "microwakeword", "precise-onnx"}
+    assert {s.split(":")[0] for s in skipped} == {"wakehubert-synthetic", "openwakeword", "microwakeword",
+                                                  "precise-onnx"}
 
 
 def test_only_selects_engines_and_failures_are_reported(monkeypatch):
@@ -106,7 +107,7 @@ def test_panel_shows_bars_triggers_detections_and_failures():
         assert expected in text, expected
 
 
-@pytest.mark.parametrize("word, trigger", [("hey_mycroft", 0.984), ("wake_up", 0.990)])
+@pytest.mark.parametrize("word, trigger", [("hey_mycroft", 0.965), ("wake_up", 0.990)])
 def test_wakehubert_engine_scores_a_clip_through_the_plugin(offline, word, trigger):
     engine = demo.WakeHuBERT(word)
     assert engine.line == trigger

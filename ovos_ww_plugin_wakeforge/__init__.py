@@ -30,12 +30,13 @@ _FEATURIZER_META_KEYS = ("pretrained_featurizer", "featurizer")
 
 # Ready models shipped with the package as models/<name>.onnx: name -> default
 # trigger probability (each head's own ONNX ``default_threshold`` metadata).
-# GRU heads on wakehubert features, trained on synthetic speech only, with Platt
+# Recurrent heads on wakehubert features, with Platt
 # calibration folded in, so the head outputs the probability that the window
 # holds the wake word.
 BUNDLED_MODELS = {
     "alexa": 0.99,
-    "hey_mycroft": 0.984,
+    "hey_mycroft": 0.965,
+    "hey_mycroft_synthetic": 0.998,
     "wake_up": 0.990,
 }
 _MODELS_DIR = join(dirname(__file__), "models")
@@ -60,9 +61,9 @@ class WakeForgeHotwordPlugin(HotWordEngine):
     A model trained on a pretrained featurizer (``ww_trainer-train --tier
     wakehubert``) names it instead of a path: ``"featurizer": "wakehubert"``.
     The default featurizer ships with the package; other pretrained ones are
-    downloaded from the Hugging Face Hub into the shared cache. Three ready
-    models ship too: ``"model": "alexa"``, ``"model": "hey_mycroft"`` and
-    ``"model": "wake_up"``.
+    downloaded from the Hugging Face Hub into the shared cache. Ready models
+    ship too: ``"model": "alexa"``, ``"model": "hey_mycroft"``,
+    ``"model": "hey_mycroft_synthetic"`` and ``"model": "wake_up"``.
 
     A head loaded by path is calibrated the same way when its own ONNX
     metadata carries a ``default_threshold`` (a Platt-calibrated head, as
@@ -77,12 +78,13 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         featurizer_revision (str): Hub revision (branch, tag or commit) of a
             pretrained featurizer.
         model (str): path/URL to the classifier-head ONNX, or a bundled model
-            name (``alexa``, ``hey_mycroft``, ``wake_up``) (required).
+            name (``alexa``, ``hey_mycroft``, ``hey_mycroft_synthetic``, ``wake_up``)
+            (required).
         vad (str): optional path/URL to a VAD ONNX (extra channel).
         threshold (float): detection threshold, default 0.5, or the head's
             own ``default_threshold`` metadata when it has one (0.99 for the
-            bundled ``alexa`` model, 0.984 for ``hey_mycroft``, 0.990 for
-            ``wake_up``).
+            bundled ``alexa`` model, 0.965 for ``hey_mycroft``, 0.998 for
+            ``hey_mycroft_synthetic``, 0.990 for ``wake_up``).
         smoothing (str): ``"ema"`` | ``"mean"`` | ``"max"``, default ``"ema"``
             (``"max"`` over one block for a calibrated head).
         patience (int): consecutive above-threshold frames to fire, default 3

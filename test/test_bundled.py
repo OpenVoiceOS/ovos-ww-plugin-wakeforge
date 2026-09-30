@@ -24,10 +24,16 @@ _METADATA = {
     "alexa": {"wake_word": "alexa", "license_has": "CC-BY-4.0",
               "training_data_has": "synthetic-wakeword-alexa"},
     "hey_mycroft": {"wake_word": "hey mycroft", "license_has": "Apache-2.0",
-                    "training_data_has": "synthetic-wakeword-hey_mycroft"},
+                    "training_data_has": "human recordings"},
+    "hey_mycroft_synthetic": {"wake_word": "hey mycroft", "license_has": "Apache-2.0",
+                              "training_data_has": "synthetic-wakeword-hey_mycroft"},
     "wake_up": {"wake_word": "wake up", "license_has": "Apache-2.0",
                 "training_data_has": "synthetic-wakeword-wake_up"},
 }
+
+
+def _clip(word):
+    return word.removesuffix("_synthetic")
 
 
 def _pcm(path, lead=2.0, tail=1.0):
@@ -66,7 +72,8 @@ def test_bundled_heads_io_and_metadata(word):
     assert meta["window_frames"] == "75"
     assert expected["license_has"] in meta["license"]
     assert expected["training_data_has"] in meta["training_data"]
-    assert "CC" in meta["training_data"] and "4.0" in meta["training_data"]
+    if "synthetic" in expected["training_data_has"]:
+        assert "CC" in meta["training_data"] and "4.0" in meta["training_data"]
     logit = sess.run(None, {"features": np.zeros((1, 75, 128), np.float32)})[0]
     assert logit.shape == (1,)
 
@@ -98,7 +105,7 @@ def test_bundled_model_detects_its_wake_word_offline(offline, word):
     assert eng.debounce_sec == 2.0
     assert eng.featurizer.name == "wakehubert"
     assert eng.engine.isolated and eng.engine.window == 75
-    pcm = _pcm(CLIPS / f"{word}.wav")
+    pcm = _pcm(CLIPS / f"{_clip(word)}.wav")
     scores, fired = _run(eng, pcm)
     assert len(fired) == 1, (fired, max(s for s in scores if s is not None))
     assert 2.0 <= fired[0] <= len(pcm) / 16000   # after the word starts, not in the leading silence
@@ -107,9 +114,7 @@ def test_bundled_model_detects_its_wake_word_offline(offline, word):
 @pytest.mark.parametrize("word", sorted(BUNDLED_MODELS))
 def test_bundled_model_ignores_the_other_words(offline, word):
     eng = WakeForgeHotwordPlugin(word, {"model": word})
-    for other in sorted(BUNDLED_MODELS):
-        if other == word:
-            continue
+    for other in sorted({_clip(w) for w in BUNDLED_MODELS} - {_clip(word)}):
         scores, fired = _run(eng, _pcm(CLIPS / f"{other}.wav"))
         assert fired == [], (word, other, max(scores))
         eng.reset()
