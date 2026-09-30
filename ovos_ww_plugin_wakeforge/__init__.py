@@ -36,7 +36,7 @@ _FEATURIZER_META_KEYS = ("pretrained_featurizer", "featurizer")
 BUNDLED_MODELS = {
     "alexa": 0.99,
     "hey_mycroft": 0.965,
-    "hey_mycroft_synthetic": 0.998,
+    "hey_mycroft_synthetic": 0.995,
     "wake_up": 0.990,
 }
 _MODELS_DIR = join(dirname(__file__), "models")
@@ -83,7 +83,7 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         vad (str): optional path/URL to a VAD ONNX (extra channel).
         threshold (float): detection threshold, default 0.5, or the head's
             own ``default_threshold`` metadata when it has one (0.99 for the
-            bundled ``alexa`` model, 0.965 for ``hey_mycroft``, 0.998 for
+            bundled ``alexa`` model, 0.965 for ``hey_mycroft``, 0.995 for
             ``hey_mycroft_synthetic``, 0.990 for ``wake_up``).
         smoothing (str): ``"ema"`` | ``"mean"`` | ``"max"``, default ``"ema"``
             (``"max"`` over one block for a calibrated head).
