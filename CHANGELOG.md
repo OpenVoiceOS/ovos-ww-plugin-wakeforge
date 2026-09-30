@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.3.0a1) (2026-09-30)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.2.0a2...0.3.0a1)
+
+**Merged pull requests:**
+
+- feat: hey mycroft models trained on human recordings and on synthetic speech [\#10](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/10) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.2.0a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.2.0a2) (2026-09-30)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.2.0a1...0.2.0a2)
+
 ## [0.2.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.2.0a1) (2026-09-30)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.1.0a1...0.2.0a1)
