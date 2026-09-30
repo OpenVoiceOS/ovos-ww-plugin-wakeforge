@@ -60,7 +60,7 @@ Each ready model is a small classifier on features from
 [WakeHuBERT tiny](https://huggingface.co/TigreGotico/wakehubert-tiny), a 0.64M-parameter
 speech feature extractor distilled from HuBERT-base. The score is a calibrated probability
 that the last 1.5 s holds the wake word. Each model fires at its own default trigger (0.965 for `hey_mycroft`,
-0.998 for `hey_mycroft_synthetic`, 0.99 for `alexa`, 0.990 for `wake_up`), and after a detection it stays quiet for 2 s. Set
+0.995 for `hey_mycroft_synthetic`, 0.99 for `alexa`, 0.990 for `wake_up`), and after a detection it stays quiet for 2 s. Set
 `"threshold"` to change the trade-off: a lower value fires more readily and falsely more often. With a
 microphone whose gain is far too high or too low, `"agc": true` levels the audio before scoring.
 Model licences are listed in `ovos_ww_plugin_wakeforge/models/NOTICE`.
@@ -96,7 +96,7 @@ carries a calibrated `default_threshold` uses it, together with the ready-model 
 | `featurizer_revision` | bundled or latest | Hugging Face revision (branch, tag or commit) of a pretrained featurizer; a revision other than the bundled one is downloaded |
 | `model` | — (required) | classifier-head ONNX (path or URL), or a ready model: `alexa`, `hey_mycroft`, `hey_mycroft_synthetic`, `wake_up` |
 | `vad` | none | optional VAD ONNX for an extra channel |
-| `threshold` | `0.5` | detection threshold; a ready model or any head whose ONNX metadata carries `default_threshold` uses that instead (`0.99` alexa, `0.965` hey_mycroft, `0.998` hey_mycroft_synthetic, `0.990` wake_up) |
+| `threshold` | `0.5` | detection threshold; a ready model or any head whose ONNX metadata carries `default_threshold` uses that instead (`0.99` alexa, `0.965` hey_mycroft, `0.995` hey_mycroft_synthetic, `0.990` wake_up) |
 | `smoothing` | `ema` | `ema` \| `mean` \| `max` (a calibrated head: `max`) |
 | `patience` | `3` | consecutive above-threshold frames to fire (a calibrated head: `1`) |
 | `debounce_sec` | `1.0` | minimum seconds between detections (a calibrated head: `2.0`) |
