@@ -30,12 +30,12 @@ _FEATURIZER_META_KEYS = ("pretrained_featurizer", "featurizer")
 
 # Ready models shipped with the package as models/<name>.onnx: name -> default
 # trigger probability (each head's own ONNX ``default_threshold`` metadata).
-# GRU heads on wakehubert features, trained on synthetic speech only, with Platt
+# Recurrent heads on wakehubert features (see models/NOTICE), with Platt
 # calibration folded in, so the head outputs the probability that the window
 # holds the wake word.
 BUNDLED_MODELS = {
     "alexa": 0.99,
-    "hey_mycroft": 0.984,
+    "hey_mycroft": 0.965,
     "wake_up": 0.990,
 }
 _MODELS_DIR = join(dirname(__file__), "models")
@@ -81,7 +81,7 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         vad (str): optional path/URL to a VAD ONNX (extra channel).
         threshold (float): detection threshold, default 0.5, or the head's
             own ``default_threshold`` metadata when it has one (0.99 for the
-            bundled ``alexa`` model, 0.984 for ``hey_mycroft``, 0.990 for
+            bundled ``alexa`` model, 0.965 for ``hey_mycroft``, 0.990 for
             ``wake_up``).
         smoothing (str): ``"ema"`` | ``"mean"`` | ``"max"``, default ``"ema"``
             (``"max"`` over one block for a calibrated head).

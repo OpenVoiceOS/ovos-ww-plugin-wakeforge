@@ -64,14 +64,14 @@ with nothing else to download. Put one of these in `mycroft.conf`:
 }
 ```
 
-Each model is a small GRU head on features from
+Each model is a small recurrent head on features from
 [WakeHuBERT tiny](https://huggingface.co/TigreGotico/wakehubert-tiny), a 0.64M-parameter
 speech feature extractor distilled from HuBERT-base (Apache-2.0, bundled in
-`ovos_ww_plugin_wakeforge/featurizers/`). The heads were trained on synthetic speech only,
-from CC-BY-4.0 synthetic wake-word datasets (see `ovos_ww_plugin_wakeforge/models/NOTICE`),
-and calibrated, so the score is the probability that the last 1.5 s holds the wake word.
+`ovos_ww_plugin_wakeforge/featurizers/`). The `alexa` and `wake_up` heads were trained on synthetic speech only, from
+CC-BY-4.0 synthetic wake-word datasets (see `ovos_ww_plugin_wakeforge/models/NOTICE`); the
+`hey_mycroft` training data is not disclosed. All heads are calibrated, so the score is the probability that the last 1.5 s holds the wake word.
 A detection fires when that probability reaches the trigger — each head's own calibrated
-`default_threshold`, 0.99 for `alexa`, 0.984 for `hey_mycroft`, 0.990 for `wake_up` — and no
+`default_threshold`, 0.99 for `alexa`, 0.965 for `hey_mycroft`, 0.990 for `wake_up` — and no
 second detection follows within 2 s. A head loaded by path (not a ready-model name) gets the
 same threshold and smoothing automatically when its ONNX metadata carries a
 `default_threshold`; see [Config keys](#config-keys).
@@ -88,8 +88,7 @@ activations:
 
 That is about 1.3 false activations per hour for `alexa` on read speech.
 
-`hey_mycroft` and `wake_up` ship newly trained heads; their detection rates and false-activation
-counts are not published yet and will be added once that evaluation is complete.
+Detection rates and false-activation counts for `hey_mycroft` and `wake_up` are not published.
 
 Set `"threshold"` to change the trade-off: lower fires more readily and falsely more often.
 With a microphone whose gain is far too high or too low, `"agc": true` levels each window
@@ -132,7 +131,7 @@ In `mycroft.conf`, point a hotword at the two ONNX files. Use local paths or URL
 | `featurizer_revision` | bundled or latest | Hugging Face revision (branch, tag or commit) of a pretrained featurizer; a revision other than the bundled one is downloaded |
 | `model` | — (required) | classifier-head ONNX (path or URL), or a ready model: `alexa`, `hey_mycroft`, `wake_up` |
 | `vad` | none | optional VAD ONNX for an extra channel |
-| `threshold` | `0.5` | detection threshold; a ready model or any head whose ONNX metadata carries `default_threshold` uses that instead (`0.99` alexa, `0.984` hey_mycroft, `0.990` wake_up) |
+| `threshold` | `0.5` | detection threshold; a ready model or any head whose ONNX metadata carries `default_threshold` uses that instead (`0.99` alexa, `0.965` hey_mycroft, `0.990` wake_up) |
 | `smoothing` | `ema` | `ema` \| `mean` \| `max` (a calibrated head: `max`) |
 | `patience` | `3` | consecutive above-threshold frames to fire (a calibrated head: `1`) |
 | `debounce_sec` | `1.0` | minimum seconds between detections (a calibrated head: `2.0`) |
