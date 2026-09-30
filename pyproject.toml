@@ -23,6 +23,7 @@ dependencies = [
     "onnxruntime>=1.20",
     "numpy",
     "requests",
+    "huggingface_hub>=0.20.0",
     "ovos-plugin-manager>=2.1.0,<3.0.0",
     "ovos-utils>=0.0.14,<1.0.0",
 ]
@@ -32,7 +33,21 @@ test = [
     "pytest<10",
     "onnx",
     "ovoscope>=1.5.0,<1.6.0",
+    "wakeforge>=0.6.0a1",
+    "soundfile>=0.14.0",
+    "rich>=15.0.0",
 ]
+demo = [
+    "openwakeword>=0.4.0",
+    "pymicro-wakeword>=2.5.0",
+    "ovos-ww-plugin-precise-onnx>=0.1.2a1",
+    "sounddevice>=0.5.6",
+    "soundfile>=0.14.0",
+    "rich>=15.0.0",
+]
+
+[project.scripts]
+ovos-wakeforge-demo = "ovos_ww_plugin_wakeforge.demo:main"
 
 [project.urls]
 Homepage = "https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge"
@@ -43,6 +58,9 @@ ovos-ww-plugin-wakeforge = "ovos_ww_plugin_wakeforge:WakeForgeHotwordPlugin"
 
 [tool.setuptools]
 include-package-data = true
+
+[tool.setuptools.package-data]
+ovos_ww_plugin_wakeforge = ["models/*.onnx", "models/NOTICE", "featurizers/*/*.onnx", "featurizers/*/config.json", "featurizers/*/NOTICE"]
 
 [tool.setuptools.packages.find]
 include = ["ovos_ww_plugin_wakeforge*"]

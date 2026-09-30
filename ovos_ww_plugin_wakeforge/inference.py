@@ -1,5 +1,6 @@
 # Vendored from wakeforge/inference.py (https://github.com/TigreGotico/wakeforge).
 # wakeforge is the source of truth — keep this copy in sync on runtime changes.
+# Local addition: session_options() and the `threads` arguments.
 # Pure runtime: numpy + onnxruntime only, no torch.
 """ONNX-only wake word inference — no PyTorch dependency at runtime."""
 from __future__ import annotations
@@ -10,6 +11,17 @@ from typing import Optional
 
 import numpy as np
 import onnxruntime as ort
+
+
+def session_options(threads: int = 1) -> ort.SessionOptions:
+    """Options for an always-on detector: `threads` intra-op threads, one inter-op
+    thread, and no spin-waiting between the small runs a stream makes."""
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = threads
+    options.inter_op_num_threads = 1
+    options.add_session_config_entry("session.intra_op.allow_spinning", "0")
+    options.add_session_config_entry("session.inter_op.allow_spinning", "0")
+    return options
 
 
 class PredictionSmoother:
@@ -131,23 +143,25 @@ class OnnxWakeWordInferencer:
         text_emb_dim: Output embedding dimension of the text featurizer (``D``).
         sample_rate: Expected audio sample rate in Hz (default 16000).
         device: ``"cpu"``, ``"cuda"``, or ``"auto"`` (selects CUDA if available).
+        threads: Intra-op threads per ONNX session.
     """
 
     def __init__(self, extractor_path: str, head_path: str,
                  vad_path: Optional[str] = None,
                  text_extractor_path: Optional[str] = None,
                  text_emb_dim: int = 128,
-                 sample_rate: int = 16000, device: str = "auto") -> None:
+                 sample_rate: int = 16000, device: str = "auto", threads: int = 1) -> None:
         if device == "auto":
             available = ort.get_available_providers()
             device = "cuda" if "CUDAExecutionProvider" in available else "cpu"
         providers = (["CUDAExecutionProvider", "CPUExecutionProvider"]
                      if device == "cuda" else ["CPUExecutionProvider"])
-        self.extractor = ort.InferenceSession(extractor_path, providers=providers)
-        self.head = ort.InferenceSession(head_path, providers=providers)
-        self.vad = ort.InferenceSession(vad_path, providers=providers) if vad_path else None
+        so = session_options(threads)
+        self.extractor = ort.InferenceSession(extractor_path, so, providers=providers)
+        self.head = ort.InferenceSession(head_path, so, providers=providers)
+        self.vad = ort.InferenceSession(vad_path, so, providers=providers) if vad_path else None
         self.text_ext = (
-            ort.InferenceSession(text_extractor_path, providers=providers)
+            ort.InferenceSession(text_extractor_path, so, providers=providers)
             if text_extractor_path else None
         )
         self._text_emb_dim = text_emb_dim
@@ -344,14 +358,16 @@ class OnnxStreamingWakeWord:
         streaming_head_path: Streaming head ONNX (state I/O).
         window: GRU-output window length the head was exported with.
         hidden_dim: GRU hidden size of the head.
+        threads: Intra-op threads per ONNX session.
     """
 
     def __init__(self, featurizer_path: str, streaming_head_path: str,
                  window: int = 100, hidden_dim: int = 128,
-                 hop_samples: int = 160, context_samples: int = 640) -> None:
-        providers = ["CPUExecutionProvider"]
-        self.ext = ort.InferenceSession(featurizer_path, providers=providers)
-        self.head = ort.InferenceSession(streaming_head_path, providers=providers)
+                 hop_samples: int = 160, context_samples: int = 640,
+                 threads: int = 1) -> None:
+        providers, so = ["CPUExecutionProvider"], session_options(threads)
+        self.ext = ort.InferenceSession(featurizer_path, so, providers=providers)
+        self.head = ort.InferenceSession(streaming_head_path, so, providers=providers)
         self._ext_in = self.ext.get_inputs()[0].name
         self._ext_out = self.ext.get_outputs()[0].name
         self.window = window
@@ -359,6 +375,30 @@ class OnnxStreamingWakeWord:
         self.hop = hop_samples            # featurizer hop (for frame accounting)
         self.context = context_samples    # left-context carried for clean MFCC
         self.reset()
+
+    @classmethod
+    def from_extractor(cls, extractor, streaming_head_path: str, window: int = 100,
+                       hidden_dim: int = 128, threads: int = 1) -> "OnnxStreamingWakeWord":
+        """Build a streamer for an :class:`~ww_trainer.feats.OnnxFeatureExtractor`.
+
+        Takes the featurizer path, hop and context from the extractor, e.g. one
+        from :meth:`~ww_trainer.feats.OnnxFeatureExtractor.from_pretrained`.
+
+        Raises:
+            ValueError: If the extractor cannot be streamed: its frames depend
+                on later audio (bidirectional) or on unbounded history
+                (recurrent), so re-featurizing a window of past audio would not
+                reproduce the features the head was trained on.
+        """
+        if not extractor.streaming:
+            raise ValueError(
+                f"Featurizer {extractor.model_path} is not streamable: its frames depend "
+                "on later audio or on unbounded history. Score whole windows with "
+                "OnnxWakeWordInferencer instead, or pick a streaming featurizer.")
+        kwargs = {"context_samples": extractor.context_samples} if extractor.context_samples else {}
+        return cls(extractor.model_path, streaming_head_path, window=window,
+                   hidden_dim=hidden_dim, hop_samples=extractor.hop_samples, threads=threads,
+                   **kwargs)
 
     def reset(self) -> None:
         """Clear the carried GRU state and audio context (call between utterances)."""
