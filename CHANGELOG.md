@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.3.0a2) (2026-09-30)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.3.0a1...0.3.0a2)
+
+**Merged pull requests:**
+
+- docs: laptop quickstart with a demo screenshot; fix: demo loads openWakeWord 0.5+ [\#11](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/11) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.3.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.3.0a1) (2026-09-30)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.2.0a2...0.3.0a1)
