@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.0a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.2.0a2) (2026-09-30)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.1.0a1...0.2.0a2)
+
+**Merged pull requests:**
+
+- feat: better hey\_mycroft model, new wake\_up model, calibrated defaults from head metadata [\#8](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/8) ([JarbasAl](https://github.com/JarbasAl))
+- ci: drop two inputs build-tests.yml does not declare [\#6](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/6) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [0.1.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.1.0a1) (2026-09-30)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.0.4a1...0.1.0a1)
