@@ -14,9 +14,9 @@ pipeline and runs it as an always-on hotword engine. The runtime uses
 pip install --pre ovos-ww-plugin-wakeforge
 ```
 
-## Ready models: alexa and hey mycroft
+## Ready models: alexa, hey mycroft and wake up
 
-The package ships two ready models and the featurizer they run on, so they work offline
+The package ships three ready models and the featurizer they run on, so they work offline
 with nothing else to download. Put one of these in `mycroft.conf`:
 
 ```json
@@ -49,29 +49,51 @@ with nothing else to download. Put one of these in `mycroft.conf`:
 }
 ```
 
+```json
+{
+  "listener": {
+    "wake_word": "wake_up"
+  },
+  "hotwords": {
+    "wake_up": {
+      "module": "ovos-ww-plugin-wakeforge",
+      "model": "wake_up",
+      "listen": true
+    }
+  }
+}
+```
+
 Each model is a small GRU head on features from
 [WakeHuBERT tiny](https://huggingface.co/TigreGotico/wakehubert-tiny), a 0.64M-parameter
 speech feature extractor distilled from HuBERT-base (Apache-2.0, bundled in
 `ovos_ww_plugin_wakeforge/featurizers/`). The heads were trained on synthetic speech only,
 from CC-BY-4.0 synthetic wake-word datasets (see `ovos_ww_plugin_wakeforge/models/NOTICE`),
 and calibrated, so the score is the probability that the last 1.5 s holds the wake word.
-A detection fires when that probability reaches the trigger, 0.99 for `alexa` and 0.98
-for `hey_mycroft` by default, and no second detection follows within 2 s.
+A detection fires when that probability reaches the trigger — each head's own calibrated
+`default_threshold`, 0.99 for `alexa`, 0.984 for `hey_mycroft`, 0.990 for `wake_up` — and no
+second detection follows within 2 s. A head loaded by path (not a ready-model name) gets the
+same threshold and smoothing automatically when its ONNX metadata carries a
+`default_threshold`; see [Config keys](#config-keys).
 
-The triggers were chosen on LibriSpeech dev-clean. On audio they were not chosen on, two
-separate runs streamed the defaults in 2048-byte chunks and counted the same false
+The `alexa` trigger was chosen on LibriSpeech dev-clean. On audio it was not chosen on, two
+separate runs streamed the default in 2048-byte chunks and counted the same false
 activations:
 
-| held-out audio | `alexa` | `hey_mycroft` |
-|---|---|---|
-| LibriSpeech test-clean, 1.0 h | 1 | 2 |
-| LibriSpeech test-other, 0.5 h | 1 | 2 |
-| AudioSet noise, 0.5 h | 0 | 0 |
+| held-out audio | `alexa` |
+|---|---|
+| LibriSpeech test-clean, 1.0 h | 1 |
+| LibriSpeech test-other, 0.5 h | 1 |
+| AudioSet noise, 0.5 h | 0 |
 
-That is about 1.3 false activations per hour for `alexa` and 2.7 for `hey_mycroft` on read
-speech. Set `"threshold"` to change the trade-off: lower fires more readily and falsely
-more often. With a microphone whose gain is far too high or too low, `"agc": true` levels
-each window before scoring it.
+That is about 1.3 false activations per hour for `alexa` on read speech.
+
+`hey_mycroft` and `wake_up` ship newly trained heads; their detection rates and false-activation
+counts are not published yet and will be added once that evaluation is complete.
+
+Set `"threshold"` to change the trade-off: lower fires more readily and falsely more often.
+With a microphone whose gain is far too high or too low, `"agc": true` levels each window
+before scoring it.
 
 ## Train a model
 
@@ -108,13 +130,13 @@ In `mycroft.conf`, point a hotword at the two ONNX files. Use local paths or URL
 |-----|---------|-------------|
 | `featurizer` | — (required) | feature-extractor ONNX (path or URL), or a pretrained featurizer name such as `wakehubert`; optional when the model names its featurizer |
 | `featurizer_revision` | bundled or latest | Hugging Face revision (branch, tag or commit) of a pretrained featurizer; a revision other than the bundled one is downloaded |
-| `model` | — (required) | classifier-head ONNX (path or URL), or a ready model: `alexa`, `hey_mycroft` |
+| `model` | — (required) | classifier-head ONNX (path or URL), or a ready model: `alexa`, `hey_mycroft`, `wake_up` |
 | `vad` | none | optional VAD ONNX for an extra channel |
-| `threshold` | `0.5` | detection threshold (ready models: `0.99` alexa, `0.98` hey_mycroft) |
-| `smoothing` | `ema` | `ema` \| `mean` \| `max` (ready models: `max`) |
-| `patience` | `3` | consecutive above-threshold frames to fire (ready models: `1`) |
-| `debounce_sec` | `1.0` | minimum seconds between detections (ready models: `2.0`) |
-| `window_size` | `5` | smoother rolling window (mean/max) (ready models: `1`) |
+| `threshold` | `0.5` | detection threshold; a ready model or any head whose ONNX metadata carries `default_threshold` uses that instead (`0.99` alexa, `0.984` hey_mycroft, `0.990` wake_up) |
+| `smoothing` | `ema` | `ema` \| `mean` \| `max` (a calibrated head: `max`) |
+| `patience` | `3` | consecutive above-threshold frames to fire (a calibrated head: `1`) |
+| `debounce_sec` | `1.0` | minimum seconds between detections (a calibrated head: `2.0`) |
+| `window_size` | `5` | smoother rolling window (mean/max) (a calibrated head: `1`) |
 | `ema_alpha` | `0.3` | EMA responsiveness |
 | `block_ms` | `80` | audio is scored in blocks of this length whatever chunk size the listener sends, so patience counts time and the featurizer always gets a full block |
 | `onnx_threads` | `1` | intra-op threads per ONNX session; sessions never spin-wait |
@@ -180,7 +202,11 @@ ovos-wakeforge-demo --wakeword hey_mycroft
 | `wakehubert` | this plugin with its ready model for the word |
 | `openwakeword` | the `openwakeword` library with its pretrained model for the word |
 | `microwakeword` | the `pymicro-wakeword` library with its v2 model for the word |
-| `precise-onnx` | the OVOS precise-onnx plugin with its hey mycroft model (no alexa model exists) |
+| `precise-onnx` | the OVOS precise-onnx plugin with its hey mycroft model (no alexa or wake_up model exists) |
+
+`openwakeword` and `microwakeword` have no `wake_up` model either; running `--wakeword
+wake_up` shows those two (and `precise-onnx`) in the red "not loaded" row, with `wakehubert`
+the only bar on the panel.
 
 Each engine has a row with a bar showing its wake-word probability and a `|` where it
 triggers. When a bar crosses its marker the row turns green with "WAKE WORD!", the
@@ -189,7 +215,7 @@ are ignored for 2 s. A meter shows the microphone level and warns when the input
 An engine that fails to load is listed in a red "not loaded" row with the reason, and an
 engine that fails while running shows the error in its own row.
 
-Options: `--wakeword alexa|hey_mycroft`, `--threshold` (WakeHuBERT trigger probability),
+Options: `--wakeword alexa|hey_mycroft|wake_up`, `--threshold` (WakeHuBERT trigger probability),
 `--oww-threshold` (default 0.5), `--mww-cutoff` (default: the model's shipped cutoff),
 `--precise-sensitivity` (default 0.5), `--only wakehubert,openwakeword,...`, `--device`
 (see `python -m sounddevice`), `--agc` (level each WakeHuBERT window) and `--file clip.wav`,

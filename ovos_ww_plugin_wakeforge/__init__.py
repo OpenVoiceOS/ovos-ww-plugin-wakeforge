@@ -29,13 +29,14 @@ from ovos_ww_plugin_wakeforge.pretrained import (
 _FEATURIZER_META_KEYS = ("pretrained_featurizer", "featurizer")
 
 # Ready models shipped with the package as models/<name>.onnx: name -> default
-# trigger probability.
+# trigger probability (each head's own ONNX ``default_threshold`` metadata).
 # GRU heads on wakehubert features, trained on synthetic speech only, with Platt
 # calibration folded in, so the head outputs the probability that the window
 # holds the wake word.
 BUNDLED_MODELS = {
     "alexa": 0.99,
-    "hey_mycroft": 0.98,
+    "hey_mycroft": 0.984,
+    "wake_up": 0.990,
 }
 _MODELS_DIR = join(dirname(__file__), "models")
 
@@ -59,8 +60,15 @@ class WakeForgeHotwordPlugin(HotWordEngine):
     A model trained on a pretrained featurizer (``ww_trainer-train --tier
     wakehubert``) names it instead of a path: ``"featurizer": "wakehubert"``.
     The default featurizer ships with the package; other pretrained ones are
-    downloaded from the Hugging Face Hub into the shared cache. Two ready
-    models ship too: ``"model": "alexa"`` and ``"model": "hey_mycroft"``.
+    downloaded from the Hugging Face Hub into the shared cache. Three ready
+    models ship too: ``"model": "alexa"``, ``"model": "hey_mycroft"`` and
+    ``"model": "wake_up"``.
+
+    A head loaded by path is calibrated the same way when its own ONNX
+    metadata carries a ``default_threshold`` (a Platt-calibrated head, as
+    ``ww_trainer-train`` writes): its threshold and smoothing default to the
+    same values as the bundled models, not to the EMA/patience-3 defaults
+    meant for an uncalibrated head. Config keys still override.
 
     Recognised config keys:
         featurizer (str): path/URL to the feature-extractor ONNX, or the name
@@ -69,18 +77,20 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         featurizer_revision (str): Hub revision (branch, tag or commit) of a
             pretrained featurizer.
         model (str): path/URL to the classifier-head ONNX, or a bundled model
-            name (``alexa``, ``hey_mycroft``) (required).
+            name (``alexa``, ``hey_mycroft``, ``wake_up``) (required).
         vad (str): optional path/URL to a VAD ONNX (extra channel).
-        threshold (float): detection threshold, default 0.5 (0.99 for the
-            bundled ``alexa`` model, 0.98 for ``hey_mycroft``).
+        threshold (float): detection threshold, default 0.5, or the head's
+            own ``default_threshold`` metadata when it has one (0.99 for the
+            bundled ``alexa`` model, 0.984 for ``hey_mycroft``, 0.990 for
+            ``wake_up``).
         smoothing (str): ``"ema"`` | ``"mean"`` | ``"max"``, default ``"ema"``
-            (``"max"`` over one block for the bundled models).
+            (``"max"`` over one block for a calibrated head).
         patience (int): consecutive above-threshold frames to fire, default 3
-            (1 for the bundled models).
+            (1 for a calibrated head).
         debounce_sec (float): minimum seconds between detections, default 1.0
-            (2.0 for the bundled models).
+            (2.0 for a calibrated head).
         window_size (int): smoother rolling-window size (mean/max), default 5
-            (1 for the bundled models).
+            (1 for a calibrated head).
         ema_alpha (float): EMA responsiveness, default 0.3.
         block_ms (float): scoring block length, default 80.
         streaming (bool): use the stateful streaming head (GRU), default False.
@@ -106,28 +116,34 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         self.last_score = None
         self.streaming = bool(self.config.get("streaming", False))
 
-        model = self.config.get("model")
-        if not model:
+        model_name = self.config.get("model")
+        if not model_name:
             raise ValueError(
                 "wakeforge plugin needs a 'model' ONNX path in the hotword config "
                 "(train one with `wakeforge-quickstart`)."
             )
-        if model in BUNDLED_MODELS:
-            trigger = BUNDLED_MODELS[model]
-            model = join(_MODELS_DIR, f"{model}.onnx")
-            # The ready models fire when the probability crosses the trigger.
-            cfg = {"threshold": trigger, "smoothing": "max", "window_size": 1, "patience": 1,
-                   "debounce_sec": 2.0}
+        bundled = model_name in BUNDLED_MODELS
+        # Fires when the probability crosses the trigger; "ready-model defaults".
+        ready_defaults = {"smoothing": "max", "window_size": 1, "patience": 1, "debounce_sec": 2.0}
+        if bundled:
+            model = join(_MODELS_DIR, f"{model_name}.onnx")
+            cfg = {"threshold": BUNDLED_MODELS[model_name], **ready_defaults}
         else:
-            model = self._resolve(model)
+            model = self._resolve(model_name)
             cfg = {"threshold": 0.5, "smoothing": "ema", "window_size": 5, "patience": 3,
                    "debounce_sec": 1.0}
-        cfg.update(self.config)
-        self.threshold = float(cfg["threshold"])
         self.threads = int(self.config.get("onnx_threads", 1))
         head = ort.InferenceSession(model, session_options(self.threads),
                                     providers=["CPUExecutionProvider"])
         meta = head.get_modelmeta().custom_metadata_map
+        if not bundled and "default_threshold" in meta:
+            # The head's own metadata says it is Platt-calibrated (as
+            # ww_trainer-train writes): score it like the bundled models,
+            # not with the EMA/patience-3 defaults meant for an uncalibrated
+            # head, which never cross a calibrated head's near-1.0 scores.
+            cfg = {"threshold": float(meta["default_threshold"]), **ready_defaults}
+        cfg.update(self.config)
+        self.threshold = float(cfg["threshold"])
         featurizer = self.config.get("featurizer")
         pretrained = self._pretrained_name(meta, featurizer)
         if pretrained is None and not featurizer:

@@ -17,6 +17,18 @@ from ovos_ww_plugin_wakeforge.pretrained import BUNDLED_REVISIONS, resolve_pretr
 PACKAGE = Path(ovos_ww_plugin_wakeforge.__file__).parent
 CLIPS = Path(__file__).parent / "clips"
 
+# Per-head metadata that is expected to differ (license wording, training data,
+# the literal wake-word string); everything else is checked the same way for
+# every bundled head.
+_METADATA = {
+    "alexa": {"wake_word": "alexa", "license_has": "CC-BY-4.0",
+              "training_data_has": "synthetic-wakeword-alexa"},
+    "hey_mycroft": {"wake_word": "hey mycroft", "license_has": "Apache-2.0",
+                    "training_data_has": "synthetic-wakeword-hey_mycroft"},
+    "wake_up": {"wake_word": "wake up", "license_has": "Apache-2.0",
+                "training_data_has": "synthetic-wakeword-wake_up"},
+}
+
 
 def _pcm(path, lead=2.0, tail=1.0):
     audio, sr = sf.read(path, dtype="int16")
@@ -37,21 +49,24 @@ def _run(eng, pcm, chunk=1024):
 
 def test_every_head_file_has_a_default_trigger():
     assert {p.stem for p in (PACKAGE / "models").glob("*.onnx")} == set(BUNDLED_MODELS)
+    assert set(BUNDLED_MODELS) == set(_METADATA)
     assert all(0 < t < 1 for t in BUNDLED_MODELS.values())
 
 
 @pytest.mark.parametrize("word", sorted(BUNDLED_MODELS))
 def test_bundled_heads_io_and_metadata(word):
-    wake_word = word.replace("_", " ")
+    expected = _METADATA[word]
     sess = ort.InferenceSession(str(PACKAGE / "models" / f"{word}.onnx"))
     (inp,), (out,) = sess.get_inputs(), sess.get_outputs()
     assert (inp.name, inp.shape[2]) == ("features", 128)
     assert out.name == "logit_calibrated"
     meta = sess.get_modelmeta().custom_metadata_map
-    assert meta["wake_word"] == wake_word
+    assert meta["wake_word"] == expected["wake_word"]
     assert meta["pretrained_featurizer"] == "wakehubert"
     assert meta["window_frames"] == "75"
-    assert "CC-BY-4.0" in meta["license"] and "synthetic-wakeword" in meta["training_data"]
+    assert expected["license_has"] in meta["license"]
+    assert expected["training_data_has"] in meta["training_data"]
+    assert "CC" in meta["training_data"] and "4.0" in meta["training_data"]
     logit = sess.run(None, {"features": np.zeros((1, 75, 128), np.float32)})[0]
     assert logit.shape == (1,)
 
@@ -73,8 +88,9 @@ def test_other_revision_goes_to_the_hub(offline):
         resolve_pretrained("wakehubert", revision="main")
 
 
-@pytest.mark.parametrize("word, trigger", [("alexa", 0.99), ("hey_mycroft", 0.98)])
-def test_bundled_model_detects_its_wake_word_offline(offline, word, trigger):
+@pytest.mark.parametrize("word", sorted(BUNDLED_MODELS))
+def test_bundled_model_detects_its_wake_word_offline(offline, word):
+    trigger = BUNDLED_MODELS[word]
     eng = WakeForgeHotwordPlugin(word, {"model": word})
     # the model fires on the block whose probability crosses the trigger
     assert eng.threshold == trigger
@@ -88,12 +104,15 @@ def test_bundled_model_detects_its_wake_word_offline(offline, word, trigger):
     assert 2.0 <= fired[0] <= len(pcm) / 16000   # after the word starts, not in the leading silence
 
 
-@pytest.mark.parametrize("word", ["alexa", "hey_mycroft"])
-def test_bundled_model_ignores_the_other_word(offline, word):
-    other = "hey_mycroft" if word == "alexa" else "alexa"
+@pytest.mark.parametrize("word", sorted(BUNDLED_MODELS))
+def test_bundled_model_ignores_the_other_words(offline, word):
     eng = WakeForgeHotwordPlugin(word, {"model": word})
-    scores, fired = _run(eng, _pcm(CLIPS / f"{other}.wav"))
-    assert fired == [], max(scores)
+    for other in sorted(BUNDLED_MODELS):
+        if other == word:
+            continue
+        scores, fired = _run(eng, _pcm(CLIPS / f"{other}.wav"))
+        assert fired == [], (word, other, max(scores))
+        eng.reset()
 
 
 def test_bundled_model_quiet_on_silence_and_noise(offline):

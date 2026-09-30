@@ -146,6 +146,38 @@ def test_detection_fires_where_offline_crosses_threshold(standin_hub, pcm):
     assert fired_at == expected
 
 
+def test_calibrated_head_by_path_uses_ready_model_defaults(standin_hub):
+    # A head loaded by path whose own ONNX metadata carries default_threshold
+    # (a Platt-calibrated head, as ww_trainer-train writes) is scored like the
+    # bundled models, not with the EMA/patience-3 defaults meant for an
+    # uncalibrated head.
+    head = standin_hub.batch_head(pretrained_featurizer="wakehubert", default_threshold="0.75")
+    eng = WakeForgeHotwordPlugin("x", {"model": head})
+    assert eng.threshold == 0.75
+    assert (eng.smoother.method, eng.smoother.window_size, eng.smoother.patience) == ("max", 1, 1)
+    assert eng.debounce_sec == 2.0
+
+
+def test_calibrated_head_threshold_and_smoothing_still_overridable(standin_hub):
+    head = standin_hub.batch_head(pretrained_featurizer="wakehubert", default_threshold="0.75")
+    eng = WakeForgeHotwordPlugin("x", {"model": head, "threshold": 0.3, "smoothing": "ema",
+                                       "patience": 3, "window_size": 5, "debounce_sec": 1.0})
+    assert eng.threshold == 0.3
+    assert (eng.smoother.method, eng.smoother.window_size, eng.smoother.patience) == ("ema", 5, 3)
+    assert eng.debounce_sec == 1.0
+
+
+def test_uncalibrated_head_by_path_keeps_ema_defaults(standin_hub):
+    # No default_threshold metadata: the head is not known to be calibrated,
+    # so the plugin keeps the EMA/patience-3 defaults meant for a fresh
+    # wakeforge export.
+    head = standin_hub.batch_head(pretrained_featurizer="wakehubert")
+    eng = WakeForgeHotwordPlugin("x", {"model": head})
+    assert eng.threshold == 0.5
+    assert (eng.smoother.method, eng.smoother.window_size, eng.smoother.patience) == ("ema", 5, 3)
+    assert eng.debounce_sec == 1.0
+
+
 def test_block_rounded_to_featurizer_hop(standin_hub):
     head = standin_hub.batch_head(pretrained_featurizer="wakehubert")
     eng = WakeForgeHotwordPlugin("x", {"model": head, "block_ms": 90})
