@@ -71,6 +71,8 @@ def test_bundled_heads_io_and_metadata(word):
     assert meta["pretrained_featurizer"] == "wakehubert"
     assert meta["window_frames"] == "75"
     assert expected["license_has"] in meta["license"]
+    if "default_threshold" in meta:
+        assert abs(float(meta["default_threshold"]) - BUNDLED_MODELS[word]) <= 5e-4
     if word == "hey_mycroft":
         assert meta["training_data"] == expected["training_data_has"]
     assert expected["training_data_has"] in meta["training_data"]
