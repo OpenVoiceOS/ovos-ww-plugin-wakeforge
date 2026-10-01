@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.5.0a1) (2026-10-01)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.4.0a1...0.5.0a1)
+
+**Merged pull requests:**
+
+- feat: hey\_mycroft\_synthetic trained on the full synthetic dataset [\#14](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/14) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.4.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.4.0a1) (2026-09-30)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.3.0...0.4.0a1)
