@@ -101,7 +101,7 @@ class MicroWakeWord(Engine):
 
     def __init__(self, word, cutoff=None):
         from pymicro_wakeword import MicroWakeWord as Mww, MicroWakeWordFeatures, Model
-        self.mww = Mww.from_builtin(Model(word))
+        self.mww = Mww.from_builtin(Model({"ok_nabu": "okay_nabu"}.get(word, word)))
         if cutoff is not None:
             self.mww.probability_cutoff = cutoff
         self.features = MicroWakeWordFeatures()

@@ -35,8 +35,10 @@ _FEATURIZER_META_KEYS = ("pretrained_featurizer", "featurizer")
 # holds the wake word.
 BUNDLED_MODELS = {
     "alexa": 0.99,
+    "computer": 0.99,
     "hey_mycroft": 0.965,
     "hey_mycroft_synthetic": 0.99,
+    "ok_nabu": 0.995,
     "wake_up": 0.990,
 }
 _MODELS_DIR = join(dirname(__file__), "models")
@@ -62,7 +64,8 @@ class WakeForgeHotwordPlugin(HotWordEngine):
     wakehubert``) names it instead of a path: ``"featurizer": "wakehubert"``.
     The default featurizer ships with the package; other pretrained ones are
     downloaded from the Hugging Face Hub into the shared cache. Ready models
-    ship too: ``"model": "alexa"``, ``"model": "hey_mycroft"``,
+    ship too: ``"model": "alexa"``, ``"model": "computer"``, ``"model": "ok_nabu"``,
+    ``"model": "hey_mycroft"``,
     ``"model": "hey_mycroft_synthetic"`` and ``"model": "wake_up"``.
 
     A head loaded by path is calibrated the same way when its own ONNX
@@ -78,12 +81,14 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         featurizer_revision (str): Hub revision (branch, tag or commit) of a
             pretrained featurizer.
         model (str): path/URL to the classifier-head ONNX, or a bundled model
-            name (``alexa``, ``hey_mycroft``, ``hey_mycroft_synthetic``, ``wake_up``)
+            name (``alexa``, ``computer``, ``hey_mycroft``, ``hey_mycroft_synthetic``,
+            ``ok_nabu``, ``wake_up``)
             (required).
         vad (str): optional path/URL to a VAD ONNX (extra channel).
         threshold (float): detection threshold, default 0.5, or the head's
             own ``default_threshold`` metadata when it has one (0.99 for the
-            bundled ``alexa`` model, 0.965 for ``hey_mycroft``, 0.99 for
+            bundled ``alexa`` and ``computer`` models, 0.995 for ``ok_nabu``, 0.965 for
+            ``hey_mycroft``, 0.99 for
             ``hey_mycroft_synthetic``, 0.990 for ``wake_up``).
         smoothing (str): ``"ema"`` | ``"mean"`` | ``"max"``, default ``"ema"``
             (``"max"`` over one block for a calibrated head).
