@@ -1,5 +1,5 @@
-Ready wake-word models: alexa.onnx, hey_mycroft.onnx, hey_mycroft_synthetic.onnx,
-wake_up.onnx
+Ready wake-word models: alexa.onnx, computer.onnx, hey_mycroft.onnx,
+hey_mycroft_synthetic.onnx, ok_nabu.onnx, wake_up.onnx
 Copyright TigreGotico. Distributed with this package under the Apache License,
 Version 2.0.
 
@@ -8,17 +8,23 @@ featurizer bundled in ../featurizers/wakehubert-tiny (TigreGotico/wakehubert-tin
 Apache-2.0). Its output is Platt-calibrated: sigmoid(output) is the probability
 that the 1.5 s window holds the wake word.
 
-hey_mycroft.onnx was trained on human recordings. alexa.onnx, wake_up.onnx and
-hey_mycroft_synthetic.onnx were trained on synthetic speech only. Training data:
+hey_mycroft.onnx was trained on human recordings. alexa.onnx, computer.onnx,
+ok_nabu.onnx, wake_up.onnx and hey_mycroft_synthetic.onnx were trained on
+synthetic speech only. Training data:
 
   TigreGotico/synthetic-wakeword-alexa        CC BY 4.0
+  TigreGotico/synthetic-wakeword-computer     CC BY 4.0
   TigreGotico/synthetic-wakeword-hey_mycroft  CC BY 4.0
+  TigreGotico/synthetic-wakeword-ok_nabu      CC BY 4.0
   TigreGotico/synthetic-wakeword-wake_up      CC BY 4.0
       https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-alexa
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-computer
       https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-hey_mycroft
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-ok_nabu
       https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-wake_up
       Wake-word positives made with text-to-speech voices and voice conversion.
-      The voice-conversion folders of synthetic-wakeword-hey_mycroft take their
+      The voice-conversion folders of synthetic-wakeword-computer,
+      synthetic-wakeword-hey_mycroft and synthetic-wakeword-ok_nabu take their
       voices from Mozilla Common Voice contributors, through the MLCommons
       Multilingual Spoken Words Corpus (CC BY 4.0).
 

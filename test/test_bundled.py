@@ -23,6 +23,10 @@ CLIPS = Path(__file__).parent / "clips"
 _METADATA = {
     "alexa": {"wake_word": "alexa", "license_has": "CC-BY-4.0",
               "training_data_has": "synthetic-wakeword-alexa"},
+    "computer": {"wake_word": "computer", "license_has": "Apache-2.0",
+                 "training_data_has": "synthetic-wakeword-computer"},
+    "ok_nabu": {"wake_word": "ok nabu", "license_has": "Apache-2.0",
+                "training_data_has": "synthetic-wakeword-ok_nabu"},
     "hey_mycroft": {"wake_word": "hey mycroft", "license_has": "Apache-2.0",
                     "training_data_has": "human recordings"},
     "hey_mycroft_synthetic": {"wake_word": "hey mycroft", "license_has": "Apache-2.0",
