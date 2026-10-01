@@ -18,10 +18,9 @@ hey_mycroft_synthetic.onnx were trained on synthetic speech only. Training data:
       https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-hey_mycroft
       https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-wake_up
       Wake-word positives made with text-to-speech voices and voice conversion.
-
-  edge-tts voices
-      Additional hey_mycroft_synthetic.onnx positives: the wake word spoken by
-      edge-tts English voices at several rates and pitches.
+      The voice-conversion folders of synthetic-wakeword-hey_mycroft take their
+      voices from Mozilla Common Voice contributors, through the MLCommons
+      Multilingual Spoken Words Corpus (CC BY 4.0).
 
   TigreGotico/not-wake-words-speech-en        CC BY 4.0
       https://huggingface.co/datasets/TigreGotico/not-wake-words-speech-en
