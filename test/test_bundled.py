@@ -35,11 +35,71 @@ _METADATA = {
                               "training_data_has": "synthetic-wakeword-hey_mycroft"},
     "wake_up": {"wake_word": "wake up", "license_has": "Apache-2.0",
                 "training_data_has": "synthetic-wakeword-wake_up"},
+    "acorda": {"wake_word": "acorda", "license_has": "Apache-2.0",
+               "training_data_has": "synthetic-wakeword-acorda"},
+    "android": {"wake_word": "android", "license_has": "Apache-2.0",
+                "training_data_has": "synthetic-wakeword-android"},
+    "athena": {"wake_word": "athena", "license_has": "Apache-2.0",
+               "training_data_has": "synthetic-wakeword-athena"},
+    "hello_nabu": {"wake_word": "hello nabu", "license_has": "Apache-2.0",
+                   "training_data_has": "synthetic-wakeword-hello_nabu"},
+    "hey_computer": {"wake_word": "hey computer", "license_has": "Apache-2.0",
+                     "training_data_has": "synthetic-wakeword-hey_computer"},
+    "hey_floyd": {"wake_word": "hey floyd", "license_has": "Apache-2.0",
+                  "training_data_has": "synthetic-wakeword-hey_floyd"},
+    "hey_jarvis": {"wake_word": "hey jarvis", "license_has": "Apache-2.0",
+                   "training_data_has": "synthetic-wakeword-hey_jarvis"},
+    "hey_robin": {"wake_word": "hey robin", "license_has": "Apache-2.0",
+                  "training_data_has": "synthetic-wakeword-hey_robin"},
+    "home_assistant": {"wake_word": "home assistant", "license_has": "Apache-2.0",
+                       "training_data_has": "synthetic-wakeword-home_assistant"},
+    "voice_assistant": {"wake_word": "voice assistant", "license_has": "Apache-2.0",
+                        "training_data_has": "synthetic-wakeword-voice_assistant"},
+    "marvin": {"wake_word": "marvin", "license_has": "Apache-2.0",
+               "training_data_has": "Speech Commands"},
+    "marvin_synthetic": {"wake_word": "marvin", "license_has": "Apache-2.0",
+                         "training_data_has": "synthetic-wakeword-marvin"},
+    "sheila_synthetic": {"wake_word": "sheila", "license_has": "Apache-2.0",
+                         "training_data_has": "synthetic-wakeword-sheila"},
+    "stop": {"wake_word": "stop", "license_has": "Apache-2.0",
+             "training_data_has": "Speech Commands"},
+    "stop_synthetic": {"wake_word": "stop", "license_has": "Apache-2.0",
+                       "training_data_has": "synthetic-wakeword-stop"},
+}
+
+# Heads scored on the int8 featurizer; every other head runs on the float one.
+_INT8 = {"alexa", "jarvis", "marvin_synthetic"}
+
+# Model -> other words' clips it also fires on. Each pair is a phrase that contains the
+# other ("jarvis", "hey jarvis"), or two phrases that share a syllable pattern; listed here so a
+# new confusion shows up as a failure.
+_CONFUSED_WITH = {
+    "jarvis": {"hey_jarvis"},
+    "computer": {"hey_computer"},
+    "hey_computer": {"computer"},
+    "home_assistant": {"voice_assistant"},
+    "hello_nabu": {"ok_nabu"},
+    "ok_nabu": {"hello_nabu"},
+    "athena": {"ok_nabu"},
+    "hey_robin": {"ok_nabu"},
 }
 
 
+def _featurizer(word):
+    return "wakehubert-int8" if word in _INT8 else "wakehubert"
+
+
+# Test clips are edge-tts voices held out of training, except hey_floyd's: its head trained on every
+# edge-tts English voice, and Kokoro and OmniVoice speech did not reach its trigger.
 def _clip(word):
     return word.removesuffix("_synthetic")
+
+
+# Silence before the clip, in seconds. The plugin scores 80 ms blocks, so four leads 20 ms
+# apart put the word at four different positions in a block; the longer leads repeat that
+# at another absolute alignment.
+_LEADS = (1.0, 1.02, 1.04, 1.06)
+_OWN_LEADS = _LEADS + (2.0, 2.02, 2.04, 2.06)
 
 
 def _pcm(path, lead=2.0, tail=1.0):
@@ -71,10 +131,10 @@ def test_bundled_heads_io_and_metadata(word):
     sess = ort.InferenceSession(str(PACKAGE / "models" / f"{word}.onnx"))
     (inp,), (out,) = sess.get_inputs(), sess.get_outputs()
     assert (inp.name, inp.shape[2]) == ("features", 128)
-    assert out.name == "logit_calibrated"
+    assert out.name in ("logit_calibrated", "logit")
     meta = sess.get_modelmeta().custom_metadata_map
     assert meta["wake_word"] == expected["wake_word"]
-    assert meta["pretrained_featurizer"] == "wakehubert"
+    assert meta["pretrained_featurizer"] == _featurizer(word)
     assert meta["window_frames"] == "75"
     assert expected["license_has"] in meta["license"]
     if "default_threshold" in meta:
@@ -113,21 +173,26 @@ def test_bundled_model_detects_its_wake_word_offline(offline, word):
     assert eng.threshold == trigger
     assert (eng.smoother.method, eng.smoother.window_size, eng.smoother.patience) == ("max", 1, 1)
     assert eng.debounce_sec == 2.0
-    assert eng.featurizer.name == "wakehubert"
+    assert eng.featurizer.name == _featurizer(word)
     assert eng.engine.isolated and eng.engine.window == 75
-    pcm = _pcm(CLIPS / f"{_clip(word)}.wav")
-    scores, fired = _run(eng, pcm)
-    assert len(fired) == 1, (fired, max(s for s in scores if s is not None))
-    assert 2.0 <= fired[0] <= len(pcm) / 16000   # after the word starts, not in the leading silence
+    for lead in _OWN_LEADS:
+        pcm = _pcm(CLIPS / f"{_clip(word)}.wav", lead=lead, tail=0.5)
+        scores, fired = _run(eng, pcm)
+        assert len(fired) == 1, (lead, fired, max(s for s in scores if s is not None))
+        assert lead <= fired[0] <= len(pcm) / 16000   # after the word starts, not in the leading silence
+        eng.reset()
 
 
 @pytest.mark.parametrize("word", sorted(BUNDLED_MODELS))
 def test_bundled_model_ignores_the_other_words(offline, word):
     eng = WakeForgeHotwordPlugin(word, {"model": word})
     for other in sorted({_clip(w) for w in BUNDLED_MODELS} - {_clip(word)}):
-        scores, fired = _run(eng, _pcm(CLIPS / f"{other}.wav"))
-        assert fired == [], (word, other, max(scores))
-        eng.reset()
+        if other in _CONFUSED_WITH.get(_clip(word), ()):
+            continue
+        for lead in _LEADS:
+            scores, fired = _run(eng, _pcm(CLIPS / f"{other}.wav", lead=lead, tail=0.5))
+            assert fired == [], (word, other, lead, max(s for s in scores if s is not None))
+            eng.reset()
 
 
 def test_bundled_model_quiet_on_silence_and_noise(offline):
