@@ -1,34 +1,71 @@
-Ready wake-word models: alexa.onnx, computer.onnx, hey_mycroft.onnx,
-hey_mycroft_synthetic.onnx, jarvis.onnx, ok_nabu.onnx, wake_up.onnx
+Ready wake-word models: acorda.onnx, alexa.onnx, android.onnx, athena.onnx,
+computer.onnx, hello_nabu.onnx, hey_computer.onnx, hey_floyd.onnx,
+hey_jarvis.onnx, hey_mycroft.onnx, hey_mycroft_synthetic.onnx,
+hey_robin.onnx, home_assistant.onnx, jarvis.onnx, marvin.onnx,
+marvin_synthetic.onnx, ok_nabu.onnx, sheila_synthetic.onnx,
+stop.onnx, stop_synthetic.onnx, voice_assistant.onnx, wake_up.onnx
+
 Copyright TigreGotico. Distributed with this package under the Apache License,
 Version 2.0.
 
 Each model is a recurrent classifier head on features from the WakeHuBERT tiny
 featurizer bundled in ../featurizers/wakehubert-tiny (TigreGotico/wakehubert-tiny,
-Apache-2.0). Its output is Platt-calibrated: sigmoid(output) is the probability
-that the 1.5 s window holds the wake word.
+Apache-2.0).
+sigmoid(output) is the score that the 1.5 s window holds the wake word.
 
-hey_mycroft.onnx was trained on human recordings. alexa.onnx, computer.onnx,
-jarvis.onnx, ok_nabu.onnx, wake_up.onnx and hey_mycroft_synthetic.onnx were trained on
-synthetic speech only. Training data:
+hey_mycroft.onnx was trained on human recordings. marvin.onnx and stop.onnx
+were trained on synthetic speech plus Speech Commands recordings and voice-cloned copies of them
+(listed below). The other models were trained on synthetic speech only. Training data:
 
-  TigreGotico/synthetic-wakeword-alexa        CC BY 4.0
-  TigreGotico/synthetic-wakeword-computer     CC BY 4.0
-  TigreGotico/synthetic-wakeword-hey_mycroft  CC BY 4.0
-  TigreGotico/synthetic-wakeword-jarvis       CC BY 4.0
-  TigreGotico/synthetic-wakeword-ok_nabu      CC BY 4.0
-  TigreGotico/synthetic-wakeword-wake_up      CC BY 4.0
+  TigreGotico/synthetic-wakeword-acorda           CC BY 4.0
+  TigreGotico/synthetic-wakeword-alexa            CC BY 4.0
+  TigreGotico/synthetic-wakeword-android          CC BY 4.0
+  TigreGotico/synthetic-wakeword-athena           CC BY 4.0
+  TigreGotico/synthetic-wakeword-computer         CC BY 4.0
+  TigreGotico/synthetic-wakeword-hello_nabu       CC BY 4.0
+  TigreGotico/synthetic-wakeword-hey_computer     CC BY 4.0
+  TigreGotico/synthetic-wakeword-hey_floyd        CC BY 4.0
+  TigreGotico/synthetic-wakeword-hey_jarvis       CC BY 4.0
+  TigreGotico/synthetic-wakeword-hey_mycroft      CC BY 4.0
+  TigreGotico/synthetic-wakeword-hey_robin        CC BY 4.0
+  TigreGotico/synthetic-wakeword-home_assistant   CC BY 4.0
+  TigreGotico/synthetic-wakeword-jarvis           CC BY 4.0
+  TigreGotico/synthetic-wakeword-marvin           CC BY 4.0
+  TigreGotico/synthetic-wakeword-ok_nabu          CC BY 4.0
+  TigreGotico/synthetic-wakeword-sheila           CC BY 4.0
+  TigreGotico/synthetic-wakeword-stop             CC BY 4.0
+  TigreGotico/synthetic-wakeword-voice_assistant  CC BY 4.0
+  TigreGotico/synthetic-wakeword-wake_up          CC BY 4.0
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-acorda
       https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-alexa
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-android
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-athena
       https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-computer
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-hello_nabu
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-hey_computer
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-hey_floyd
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-hey_jarvis
       https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-hey_mycroft
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-hey_robin
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-home_assistant
       https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-jarvis
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-marvin
       https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-ok_nabu
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-sheila
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-stop
+      https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-voice_assistant
       https://huggingface.co/datasets/TigreGotico/synthetic-wakeword-wake_up
       Wake-word positives made with text-to-speech voices and voice conversion.
       The voice-conversion folders of synthetic-wakeword-computer,
       synthetic-wakeword-hey_mycroft and synthetic-wakeword-ok_nabu take their
       voices from Mozilla Common Voice contributors, through the MLCommons
-      Multilingual Spoken Words Corpus (CC BY 4.0).
+      Multilingual Spoken Words Corpus (CC BY 4.0). So do the voice-conversion
+      folders of synthetic-wakeword-acorda, -hey_computer, -hey_floyd, -hey_robin
+      and -marvin.
+
+  Google Speech Commands                       CC BY 4.0
+      https://arxiv.org/abs/1804.03209
+      Recordings of "marvin" and "stop" (marvin.onnx and stop.onnx).
 
   TigreGotico/not-wake-words-speech-en        CC BY 4.0
       https://huggingface.co/datasets/TigreGotico/not-wake-words-speech-en

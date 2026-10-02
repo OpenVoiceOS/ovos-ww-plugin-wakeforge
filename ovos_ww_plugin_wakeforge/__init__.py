@@ -30,17 +30,32 @@ _FEATURIZER_META_KEYS = ("pretrained_featurizer", "featurizer")
 
 # Ready models shipped with the package as models/<name>.onnx: name -> default
 # trigger probability (each head's own ONNX ``default_threshold`` metadata).
-# Recurrent heads on wakehubert features, with Platt
-# calibration folded in, so the head outputs the probability that the window
-# holds the wake word.
+# Recurrent heads on wakehubert features (the featurizer each head names in its
+# metadata); sigmoid of the head output is the score that the window holds the
+# wake word.
 BUNDLED_MODELS = {
-    "alexa": 0.928741,
+    "acorda": 0.86,
+    "alexa": 0.92875,
+    "android": 0.96,
+    "athena": 0.973367,
     "computer": 0.99,
+    "hello_nabu": 0.919945,
+    "hey_computer": 0.96,
+    "hey_floyd": 0.903828,
+    "hey_jarvis": 0.87,
     "hey_mycroft": 0.965,
     "hey_mycroft_synthetic": 0.99,
-    "jarvis": 0.9918,
+    "hey_robin": 0.95,
+    "home_assistant": 0.984638,
+    "jarvis": 0.989,
+    "marvin": 0.999915,
+    "marvin_synthetic": 0.999891,
     "ok_nabu": 0.995,
-    "wake_up": 0.990,
+    "sheila_synthetic": 0.99386,
+    "stop": 0.999326,
+    "stop_synthetic": 0.981546,
+    "voice_assistant": 0.944529,
+    "wake_up": 0.99,
 }
 _MODELS_DIR = join(dirname(__file__), "models")
 
@@ -65,9 +80,8 @@ class WakeForgeHotwordPlugin(HotWordEngine):
     wakehubert``) names it instead of a path: ``"featurizer": "wakehubert"``.
     The default featurizer ships with the package; other pretrained ones are
     downloaded from the Hugging Face Hub into the shared cache. Ready models
-    ship too: ``"model": "alexa"``, ``"model": "computer"``, ``"model": "jarvis"``, ``"model": "ok_nabu"``,
-    ``"model": "hey_mycroft"``,
-    ``"model": "hey_mycroft_synthetic"`` and ``"model": "wake_up"``.
+    ship too, named as in ``BUNDLED_MODELS``: ``"model": "alexa"``, ``"model": "hey_jarvis"``,
+    ``"model": "marvin"``, ``"model": "wake_up"`` and so on.
 
     A head loaded by path is calibrated the same way when its own ONNX
     metadata carries a ``default_threshold`` (a Platt-calibrated head, as
