@@ -2,7 +2,7 @@
 
 An OpenVoiceOS wake-word plugin that runs models made with
 [wakeforge](https://github.com/TigreGotico/wakeforge). It ships ready models for
-"hey mycroft", "alexa", "wake up", "computer" and "ok nabu", together with the feature extractor they run on, so it works
+"hey mycroft", "alexa", "wake up", "computer", "jarvis" and "ok nabu", together with the feature extractor they run on, so it works
 offline with nothing else to download. The runtime needs only `onnxruntime` and `numpy`.
 
 This plugin only runs models. To train a model for your own wake word, use
@@ -48,20 +48,20 @@ Put this in `mycroft.conf`:
 }
 ```
 
-For the other ready models, set `model` to `alexa`, `computer`, `ok_nabu`, `wake_up` or
+For the other ready models, set `model` to `alexa`, `computer`, `jarvis`, `ok_nabu`, `wake_up` or
 `hey_mycroft_synthetic`, and name
 the hotword to match.
 
 "hey mycroft" ships in two versions for comparison. `hey_mycroft` was trained on human
 recordings. `hey_mycroft_synthetic` was trained on synthetic speech only, the same way as
-`alexa`, `computer`, `ok_nabu` and `wake_up`, so it shows what a model for a word nobody has recorded can reach. The demo
+`alexa`, `computer`, `jarvis`, `ok_nabu` and `wake_up`, so it shows what a model for a word nobody has recorded can reach. The demo
 below runs both side by side.
 
 Each ready model is a small classifier on features from
 [WakeHuBERT tiny](https://huggingface.co/TigreGotico/wakehubert-tiny), a 0.64M-parameter
 speech feature extractor distilled from HuBERT-base. The score is a calibrated probability
 that the last 1.5 s holds the wake word. Each model fires at its own default trigger (0.965 for `hey_mycroft`,
-0.99 for `hey_mycroft_synthetic`, 0.99 for `alexa` and `computer`, 0.995 for `ok_nabu`,
+0.99 for `hey_mycroft_synthetic`, 0.928741 for `alexa`, 0.99 for `computer`, 0.9918 for `jarvis`, 0.995 for `ok_nabu`,
 0.990 for `wake_up`), and after a detection it stays quiet for 2 s. Set
 `"threshold"` to change the trade-off: a lower value fires more readily and falsely more often. With a
 microphone whose gain is far too high or too low, `"agc": true` levels the audio before scoring.
@@ -96,9 +96,9 @@ carries a calibrated `default_threshold` uses it, together with the ready-model 
 |-----|---------|-------------|
 | `featurizer` | — (required) | feature-extractor ONNX (path or URL), or a pretrained featurizer name such as `wakehubert`; optional when the model names its featurizer |
 | `featurizer_revision` | bundled or latest | Hugging Face revision (branch, tag or commit) of a pretrained featurizer; a revision other than the bundled one is downloaded |
-| `model` | — (required) | classifier-head ONNX (path or URL), or a ready model: `alexa`, `computer`, `hey_mycroft`, `hey_mycroft_synthetic`, `ok_nabu`, `wake_up` |
+| `model` | — (required) | classifier-head ONNX (path or URL), or a ready model: `alexa`, `computer`, `hey_mycroft`, `hey_mycroft_synthetic`, `jarvis`, `ok_nabu`, `wake_up` |
 | `vad` | none | optional VAD ONNX for an extra channel |
-| `threshold` | `0.5` | detection threshold; a ready model or any head whose ONNX metadata carries `default_threshold` uses that instead (`0.99` alexa, `0.99` computer, `0.965` hey_mycroft, `0.99` hey_mycroft_synthetic, `0.995` ok_nabu, `0.990` wake_up) |
+| `threshold` | `0.5` | detection threshold; a ready model or any head whose ONNX metadata carries `default_threshold` uses that instead (`0.928741` alexa, `0.99` computer, `0.965` hey_mycroft, `0.99` hey_mycroft_synthetic, `0.9918` jarvis, `0.995` ok_nabu, `0.990` wake_up) |
 | `smoothing` | `ema` | `ema` \| `mean` \| `max` (a calibrated head: `max`) |
 | `patience` | `3` | consecutive above-threshold frames to fire (a calibrated head: `1`) |
 | `debounce_sec` | `1.0` | minimum seconds between detections (a calibrated head: `2.0`) |
@@ -145,7 +145,7 @@ are ignored for 2 s. A meter shows the microphone level and warns when the input
 An engine that fails to load is listed in a red "not loaded" row with the reason, and an
 engine that fails while running shows the error in its own row.
 
-Options: `--wakeword alexa|computer|hey_mycroft|ok_nabu|wake_up`, `--threshold` (WakeHuBERT trigger probability),
+Options: `--wakeword alexa|computer|hey_mycroft|jarvis|ok_nabu|wake_up`, `--threshold` (WakeHuBERT trigger probability),
 `--oww-threshold` (default 0.5), `--mww-cutoff` (default: the model's shipped cutoff),
 `--precise-sensitivity` (default 0.5), `--only wakehubert,openwakeword,...`, `--device`
 (see `python -m sounddevice`), `--agc` (level each WakeHuBERT window) and `--file clip.wav`,
