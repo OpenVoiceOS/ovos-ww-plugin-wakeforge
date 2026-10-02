@@ -34,10 +34,11 @@ _FEATURIZER_META_KEYS = ("pretrained_featurizer", "featurizer")
 # calibration folded in, so the head outputs the probability that the window
 # holds the wake word.
 BUNDLED_MODELS = {
-    "alexa": 0.99,
+    "alexa": 0.928741,
     "computer": 0.99,
     "hey_mycroft": 0.965,
     "hey_mycroft_synthetic": 0.99,
+    "jarvis": 0.9918,
     "ok_nabu": 0.995,
     "wake_up": 0.990,
 }
@@ -64,7 +65,7 @@ class WakeForgeHotwordPlugin(HotWordEngine):
     wakehubert``) names it instead of a path: ``"featurizer": "wakehubert"``.
     The default featurizer ships with the package; other pretrained ones are
     downloaded from the Hugging Face Hub into the shared cache. Ready models
-    ship too: ``"model": "alexa"``, ``"model": "computer"``, ``"model": "ok_nabu"``,
+    ship too: ``"model": "alexa"``, ``"model": "computer"``, ``"model": "jarvis"``, ``"model": "ok_nabu"``,
     ``"model": "hey_mycroft"``,
     ``"model": "hey_mycroft_synthetic"`` and ``"model": "wake_up"``.
 
@@ -82,12 +83,12 @@ class WakeForgeHotwordPlugin(HotWordEngine):
             pretrained featurizer.
         model (str): path/URL to the classifier-head ONNX, or a bundled model
             name (``alexa``, ``computer``, ``hey_mycroft``, ``hey_mycroft_synthetic``,
-            ``ok_nabu``, ``wake_up``)
+            ``jarvis``, ``ok_nabu``, ``wake_up``)
             (required).
         vad (str): optional path/URL to a VAD ONNX (extra channel).
         threshold (float): detection threshold, default 0.5, or the head's
-            own ``default_threshold`` metadata when it has one (0.99 for the
-            bundled ``alexa`` and ``computer`` models, 0.995 for ``ok_nabu``, 0.965 for
+            own ``default_threshold`` metadata when it has one (0.928741 for the
+            bundled ``alexa`` model, 0.99 for ``computer``, 0.9918 for ``jarvis``, 0.995 for ``ok_nabu``, 0.965 for
             ``hey_mycroft``, 0.99 for
             ``hey_mycroft_synthetic``, 0.990 for ``wake_up``).
         smoothing (str): ``"ema"`` | ``"mean"`` | ``"max"``, default ``"ema"``

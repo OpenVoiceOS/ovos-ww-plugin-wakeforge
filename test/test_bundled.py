@@ -21,10 +21,12 @@ CLIPS = Path(__file__).parent / "clips"
 # the literal wake-word string); everything else is checked the same way for
 # every bundled head.
 _METADATA = {
-    "alexa": {"wake_word": "alexa", "license_has": "CC-BY-4.0",
+    "alexa": {"wake_word": "alexa", "license_has": "Apache-2.0",
               "training_data_has": "synthetic-wakeword-alexa"},
     "computer": {"wake_word": "computer", "license_has": "Apache-2.0",
                  "training_data_has": "synthetic-wakeword-computer"},
+    "jarvis": {"wake_word": "jarvis", "license_has": "Apache-2.0",
+               "training_data_has": "synthetic-wakeword-jarvis"},
     "ok_nabu": {"wake_word": "ok nabu", "license_has": "Apache-2.0",
                 "training_data_has": "synthetic-wakeword-ok_nabu"},
     "hey_mycroft": {"wake_word": "hey mycroft", "license_has": "Apache-2.0",
