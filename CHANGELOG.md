@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.7.0a1) (2026-10-02)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.6.0a1...0.7.0a1)
+
+**Merged pull requests:**
+
+- feat: jarvis ready model, and a stronger alexa model trained on synthetic speech only [\#19](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/19) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.6.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.6.0a1) (2026-10-01)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.5.0a1...0.6.0a1)
