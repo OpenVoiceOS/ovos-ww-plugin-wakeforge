@@ -106,7 +106,7 @@ def test_panel_shows_bars_triggers_detections_and_failures():
         assert expected in text, expected
 
 
-@pytest.mark.parametrize("word, trigger", [("hey_mycroft", 0.965), ("wake_up", 0.990)])
+@pytest.mark.parametrize("word, trigger", [("hey_mycroft", 0.965), ("wake_up", 0.36)])
 def test_wakehubert_engine_scores_a_clip_through_the_plugin(word, trigger):
     engine = demo.WakeHuBERT(word)
     assert engine.line == trigger

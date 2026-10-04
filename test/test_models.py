@@ -33,15 +33,26 @@ CLIPS = Path(__file__).parent / "clips"
 _SYNTHETIC_ONLY = "synthetic only"
 _METADATA = {
     "wakehubert_alexa": {"wake_word": "alexa", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_android": {"wake_word": "android", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_computer": {"wake_word": "computer", "training_data_has": "synthetic-wakeword-computer"},
     "wakehubert_hello_nabu": {"wake_word": "hello nabu", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_hey_chatterbox": {"wake_word": "hey chatterbox", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_hey_computer": {"wake_word": "hey computer", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_hey_floyd": {"wake_word": "hey floyd", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_hey_jarvis": {"wake_word": "hey jarvis", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_hey_k9": {"wake_word": "hey k9", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_hey_marvin": {"wake_word": "hey marvin", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_hey_mycroft": {"wake_word": "hey mycroft", "training_data_has": "human recordings"},
+    "wakehubert_hey_rhasspy": {"wake_word": "hey rhasspy", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_hey_robin": {"wake_word": "hey robin", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_hey_scout": {"wake_word": "hey scout", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_home_assistant": {"wake_word": "home assistant", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_jarvis": {"wake_word": "jarvis", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_marvin": {"wake_word": "marvin", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_okay_nabu": {"wake_word": "okay nabu", "training_data_has": _SYNTHETIC_ONLY},
-    "wakehubert_wake_up": {"wake_word": "wake up", "training_data_has": "synthetic-wakeword-wake_up"},
+    "wakehubert_sheila": {"wake_word": "sheila", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_stop": {"wake_word": "stop", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_wake_up": {"wake_word": "wake up", "training_data_has": _SYNTHETIC_ONLY},
 }
 # Heads exported with their calibration folded into the graph, on the int8
 # featurizer: 0.5 is the probability the calibration targets.
@@ -51,9 +62,16 @@ CALIBRATED = sorted(w for w, m in _METADATA.items() if m["training_data_has"] ==
 # similar-sounding words, documented in the README.
 _CONFUSED_WITH = {
     "jarvis": {"hey_jarvis"},
+    "android": {"hey_floyd"},
+    "computer": {"hey_computer"},
+    "hey_computer": {"computer"},
+    "marvin": {"hey_marvin"},
+    "hey_jarvis": {"hey_chatterbox"},
     "hello_nabu": {"hey_marvin", "okay_nabu"},
-    "hey_marvin": {"okay_nabu"},
-    "okay_nabu": {"hey_marvin"},
+    "hey_marvin": {"hey_rhasspy", "hey_robin", "marvin", "okay_nabu"},
+    "hey_robin": {"hey_marvin", "hey_rhasspy", "okay_nabu"},
+    "okay_nabu": {"hey_k9", "hey_marvin", "hey_rhasspy"},
+    "sheila": {"computer"},
 }
 
 
