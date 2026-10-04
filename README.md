@@ -18,6 +18,15 @@ This plugin only runs models. To train a model for your own wake word, use
 pip install --pre ovos-ww-plugin-wakeforge
 ```
 
+## Try it in your browser
+
+Before installing anything, try the models in the browser. Everything runs locally on your machine:
+
+- [WakeHuBERT wake words](https://huggingface.co/spaces/OpenVoiceOS/wakehubert-wakewords-space) runs every ready
+  model on your microphone or an uploaded file, with a live score and the model's calibrated threshold.
+- [WakePhoneHuBERT](https://huggingface.co/spaces/TigreGotico/wakephonehubert-space) spots a keyword you type, in
+  any eSpeak NG language or as IPA, with no trained model, and shows voice activity and live phones.
+
 ## Try it on your laptop
 
 You don't need OpenVoiceOS to try the models. The demo listens to your microphone and runs the ready
