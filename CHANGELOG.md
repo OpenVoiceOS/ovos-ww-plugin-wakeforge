@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.10.0a1) (2026-10-04)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.9.0a1...0.10.0a1)
+
+**Merged pull requests:**
+
+- feat: WakePhoneHuBERT featurizer [\#24](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/24) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.9.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.9.0a1) (2026-10-04)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.8.0a1...0.9.0a1)
