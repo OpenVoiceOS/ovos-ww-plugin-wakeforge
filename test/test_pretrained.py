@@ -16,6 +16,8 @@ from ovos_ww_plugin_wakeforge.pretrained import (
 )
 from ovos_ww_plugin_wakeforge.inference import OnnxStreamingWakeWord
 
+PINNED = PRETRAINED_FEATURIZERS["wakehubert"].revision
+
 
 def _sigmoid(x):
     return 1.0 / (1.0 + np.exp(-x))
@@ -72,7 +74,7 @@ def test_featurizer_named_by_head_metadata(standin_hub, pcm):
     eng = WakeForgeHotwordPlugin("hey computer", {"model": head, "threshold": 1.1})
     assert isinstance(eng.engine, OnnxWindowedWakeWord)
     assert eng.featurizer.name == "wakehubert"
-    assert standin_hub.calls[0] == ("TigreGotico/wakehubert-tiny", "config.json", None)
+    assert standin_hub.calls[0] == ("TigreGotico/wakehubert-tiny", "config.json", PINNED)
     assert standin_hub.calls[1][1] == "wakehubert.onnx"
     assert eng.engine.context == standin_hub.context
 
@@ -81,7 +83,7 @@ def test_featurizer_named_by_config(standin_hub):
     head = standin_hub.batch_head()
     eng = WakeForgeHotwordPlugin("hey computer", {"model": head, "featurizer": "wakehubert-int8"})
     assert eng.featurizer.name == "wakehubert-int8"
-    assert standin_hub.calls[1] == ("TigreGotico/wakehubert-tiny", "wakehubert_int8.onnx", None)
+    assert standin_hub.calls[1] == ("TigreGotico/wakehubert-tiny", "wakehubert_int8.onnx", PINNED)
 
 
 def test_head_metadata_wins_over_config(standin_hub):
@@ -149,7 +151,7 @@ def test_detection_fires_where_offline_crosses_threshold(standin_hub, pcm):
 def test_calibrated_head_by_path_uses_ready_model_defaults(standin_hub):
     # A head loaded by path whose own ONNX metadata carries default_threshold
     # (a Platt-calibrated head, as ww_trainer-train writes) is scored like the
-    # bundled models, not with the EMA/patience-3 defaults meant for an
+    # ready models, not with the EMA/patience-3 defaults meant for an
     # uncalibrated head.
     head = standin_hub.batch_head(pretrained_featurizer="wakehubert", default_threshold="0.75")
     eng = WakeForgeHotwordPlugin("x", {"model": head})

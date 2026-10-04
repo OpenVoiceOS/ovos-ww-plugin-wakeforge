@@ -4,9 +4,8 @@
 
 Every engine hears the same microphone audio in 80 ms chunks, as a live assistant would feed it:
 
-  wakehubert       this plugin with its bundled model for the word, on the bundled WakeHuBERT
-                   featurizer; the score is the calibrated probability that the last 1.5 s holds
-                   the wake word
+  wakehubert       this plugin with its ready model for the word, on its WakeHuBERT featurizer;
+                   the score is the probability that the last 1.5 s holds the wake word
   openwakeword     the openwakeword library with its pretrained model for the word
   microwakeword    the pymicro-wakeword library with its v2 model for the word, at its shipped cutoff
   precise-onnx     the OVOS precise-onnx plugin with its hey mycroft model (no alexa model exists)
@@ -22,12 +21,12 @@ import time
 
 import numpy as np
 
-from ovos_ww_plugin_wakeforge import BUNDLED_MODELS
+from ovos_ww_plugin_wakeforge import model_names
 
 SAMPLE_RATE = 16000
 CHUNK = 1280  # 80 ms, the block openWakeWord predicts on
 REFRACTORY_SEC = 2.0
-ENGINES = ("wakehubert", "wakehubert-synthetic", "openwakeword", "microwakeword", "precise-onnx")
+ENGINES = ("wakehubert", "openwakeword", "microwakeword", "precise-onnx")
 PRECISE_MODEL = ("https://github.com/OpenVoiceOS/precise-lite-models/raw/master/"
                  "wakewords/en/{}.onnx")
 
@@ -44,12 +43,12 @@ class Engine:
 
 
 class WakeHuBERT(Engine):
-    """This plugin with its bundled model for the word."""
+    """This plugin with its ready model for the word."""
     name = "wakehubert"
 
     def __init__(self, word, threshold=None, agc=False):
         from ovos_ww_plugin_wakeforge import WakeForgeHotwordPlugin
-        config = {"model": word, "agc": agc}
+        config = {"model": f"wakehubert_{word}", "agc": agc}
         if threshold is not None:
             config["threshold"] = threshold
         self.plugin = WakeForgeHotwordPlugin(word, config)
@@ -59,16 +58,6 @@ class WakeHuBERT(Engine):
         self.plugin.update(pcm)
         self.score = self.plugin.last_score
         return self.plugin.found_wake_word()
-
-
-class WakeHuBERTSynthetic(WakeHuBERT):
-    """This plugin with its model for the word trained on synthetic speech only."""
-    name = "wakehubert-synthetic"
-
-    def __init__(self, word, agc=False):
-        if f"{word}_synthetic" not in BUNDLED_MODELS:
-            raise ValueError(f"no synthetic-only model for '{word}'")
-        super().__init__(f"{word}_synthetic", agc=agc)
 
 
 class OpenWakeWord(Engine):
@@ -101,7 +90,7 @@ class MicroWakeWord(Engine):
 
     def __init__(self, word, cutoff=None):
         from pymicro_wakeword import MicroWakeWord as Mww, MicroWakeWordFeatures, Model
-        self.mww = Mww.from_builtin(Model({"ok_nabu": "okay_nabu"}.get(word, word)))
+        self.mww = Mww.from_builtin(Model(word))
         if cutoff is not None:
             self.mww.probability_cutoff = cutoff
         self.features = MicroWakeWordFeatures()
@@ -145,7 +134,6 @@ def build_engines(args):
     """Load the selected engines; return them and a list of 'name: reason' for those that failed."""
     makers = {
         "wakehubert": lambda: WakeHuBERT(args.wakeword, args.threshold, args.agc),
-        "wakehubert-synthetic": lambda: WakeHuBERTSynthetic(args.wakeword, args.agc),
         "openwakeword": lambda: OpenWakeWord(args.wakeword, args.oww_threshold),
         "microwakeword": lambda: MicroWakeWord(args.wakeword, args.mww_cutoff),
         "precise-onnx": lambda: PreciseOnnx(args.wakeword, args.precise_sensitivity),
@@ -275,10 +263,10 @@ def listen(engines, skipped, word, device=None):
 
 def parse_args(argv=None):
     ap = argparse.ArgumentParser(prog="ovos-wakeforge-demo", description=__doc__.split("\n\n")[0])
-    ap.add_argument("--wakeword", choices=sorted(w for w in BUNDLED_MODELS if not w.endswith("_synthetic")),
+    ap.add_argument("--wakeword", choices=[w.removeprefix("wakehubert_") for w in model_names()],
                     default="alexa")
     ap.add_argument("--threshold", type=float,
-                    help="WakeHuBERT trigger probability, 0-1 (default: the bundled model's)")
+                    help="WakeHuBERT trigger probability, 0-1 (default: the model's)")
     ap.add_argument("--oww-threshold", type=float, default=0.5, help="openWakeWord threshold (default 0.5)")
     ap.add_argument("--mww-cutoff", type=float,
                     help="microWakeWord probability cutoff (default: the model's shipped value)")

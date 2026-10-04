@@ -1,0 +1,22 @@
+{
+  "huggingface": [
+    {
+      "id": "OpenVoiceOS/wakehubert-wakewords",
+      "type": "model",
+      "access": "read",
+      "revision": "1201150df0e45902fac3f488e1db8e6983b15dfc",
+      "license": "apache-2.0",
+      "files": ["models.json", "models/wakehubert_<word>.onnx"],
+      "use": "wake-word heads, downloaded on first use into the Hugging Face cache and checked against the sha256 in models.json"
+    },
+    {
+      "id": "TigreGotico/wakehubert-tiny",
+      "type": "model",
+      "access": "read",
+      "revision": "e30726f3a1c28bb5dffadf101fe26c97e0e3c3e1",
+      "license": "apache-2.0",
+      "files": ["config.json", "wakehubert.onnx", "wakehubert_int8.onnx"],
+      "use": "WakeHuBERT featurizer the heads run on, downloaded on first use into the Hugging Face cache"
+    }
+  ]
+}

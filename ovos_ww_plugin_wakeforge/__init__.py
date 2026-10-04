@@ -3,12 +3,15 @@
 Loads a wakeforge two-file ONNX pipeline (featurizer + classifier head) and runs
 it as an always-on hotword detector. Pure runtime: numpy + onnxruntime, no torch.
 """
+import hashlib
+import json
 from os import makedirs
-from os.path import dirname, isfile, join, expanduser
+from os.path import isfile, join, expanduser
 
 import numpy as np
 import onnxruntime as ort
 import requests
+from huggingface_hub import hf_hub_download
 from ovos_plugin_manager.templates.hotwords import HotWordEngine
 from ovos_utils.log import LOG
 from ovos_utils.xdg_utils import xdg_data_home
@@ -28,21 +31,43 @@ from ovos_ww_plugin_wakeforge.pretrained import (
 # Head metadata keys that may name the pretrained featurizer, in order.
 _FEATURIZER_META_KEYS = ("pretrained_featurizer", "featurizer")
 
-# Ready models shipped with the package as models/<name>.onnx: name -> default
-# trigger probability (each head's own ONNX ``default_threshold`` metadata).
-# Recurrent heads on wakehubert features, with Platt
-# calibration folded in, so the head outputs the probability that the window
-# holds the wake word.
-BUNDLED_MODELS = {
-    "alexa": 0.928741,
-    "computer": 0.99,
-    "hey_mycroft": 0.965,
-    "hey_mycroft_synthetic": 0.99,
-    "jarvis": 0.9918,
-    "ok_nabu": 0.995,
-    "wake_up": 0.990,
-}
-_MODELS_DIR = join(dirname(__file__), "models")
+# Ready models are Hub files named in the repository's models.json, pinned to a
+# revision. Each head is a recurrent classifier on WakeHuBERT features with its
+# calibration folded in, so it outputs the probability that the window holds
+# the wake word; its ``pretrained_featurizer`` metadata names the featurizer.
+MODELS_REPO = "OpenVoiceOS/wakehubert-wakewords"
+MODELS_REVISION = "1201150df0e45902fac3f488e1db8e6983b15dfc"
+
+
+def _download_failed(name, revision, error):
+    return RuntimeError(
+        f"wakeforge model '{name}' ({MODELS_REPO} at revision {revision}) could not be "
+        f"downloaded and is not in the local Hugging Face cache: {error}")
+
+
+def model_entries(revision=MODELS_REVISION):
+    """The ready models of the Hub repository at ``revision``, by name."""
+    with open(hf_hub_download(MODELS_REPO, "models.json", revision=revision), encoding="utf-8") as f:
+        return {entry["name"]: entry for entry in json.load(f)["models"]}
+
+
+def model_names(revision=MODELS_REVISION):
+    """Names of the ready models at ``revision``."""
+    return sorted(model_entries(revision))
+
+
+def download_listed_model(entry, revision=MODELS_REVISION):
+    """Download a ready model into the shared Hugging Face cache and check its SHA-256."""
+    try:
+        path = hf_hub_download(MODELS_REPO, entry["file"], revision=revision)
+    except OSError as e:
+        raise _download_failed(entry["name"], revision, e) from e
+    with open(path, "rb") as f:
+        digest = hashlib.sha256(f.read()).hexdigest()
+    if digest != entry["sha256"]:
+        raise ValueError(f"wakeforge model '{entry['name']}' at {path} has SHA-256 {digest}, "
+                         f"models.json lists {entry['sha256']}")
+    return path
 
 
 class WakeForgeHotwordPlugin(HotWordEngine):
@@ -63,16 +88,16 @@ class WakeForgeHotwordPlugin(HotWordEngine):
 
     A model trained on a pretrained featurizer (``ww_trainer-train --tier
     wakehubert``) names it instead of a path: ``"featurizer": "wakehubert"``.
-    The default featurizer ships with the package; other pretrained ones are
-    downloaded from the Hugging Face Hub into the shared cache. Ready models
-    ship too: ``"model": "alexa"``, ``"model": "computer"``, ``"model": "jarvis"``, ``"model": "ok_nabu"``,
-    ``"model": "hey_mycroft"``,
-    ``"model": "hey_mycroft_synthetic"`` and ``"model": "wake_up"``.
+    Pretrained featurizers are downloaded from the Hugging Face Hub into the
+    shared cache. Ready models are downloaded from the Hub repository
+    ``OpenVoiceOS/wakehubert-wakewords`` the same way, named
+    ``wakehubert_<word>``: ``"model": "wakehubert_jarvis"`` and the other names
+    ``model_names()`` returns.
 
     A head loaded by path is calibrated the same way when its own ONNX
     metadata carries a ``default_threshold`` (a Platt-calibrated head, as
     ``ww_trainer-train`` writes): its threshold and smoothing default to the
-    same values as the bundled models, not to the EMA/patience-3 defaults
+    same values as the ready models, not to the EMA/patience-3 defaults
     meant for an uncalibrated head. Config keys still override.
 
     Recognised config keys:
@@ -81,16 +106,15 @@ class WakeForgeHotwordPlugin(HotWordEngine):
             ...). Optional when the head's ONNX metadata names one.
         featurizer_revision (str): Hub revision (branch, tag or commit) of a
             pretrained featurizer.
-        model (str): path/URL to the classifier-head ONNX, or a bundled model
-            name (``alexa``, ``computer``, ``hey_mycroft``, ``hey_mycroft_synthetic``,
-            ``jarvis``, ``ok_nabu``, ``wake_up``)
-            (required).
+        model (str): path/URL to the classifier-head ONNX, or a ready model
+            name from ``model_names()`` (``wakehubert_alexa``,
+            ``wakehubert_jarvis``, ...) (required).
+        models_revision (str): Hub revision of the ready-model repository,
+            default ``MODELS_REVISION``.
         vad (str): optional path/URL to a VAD ONNX (extra channel).
         threshold (float): detection threshold, default 0.5, or the head's
-            own ``default_threshold`` metadata when it has one (0.928741 for the
-            bundled ``alexa`` model, 0.99 for ``computer``, 0.9918 for ``jarvis``, 0.995 for ``ok_nabu``, 0.965 for
-            ``hey_mycroft``, 0.99 for
-            ``hey_mycroft_synthetic``, 0.990 for ``wake_up``).
+            own ``default_threshold`` metadata when it has one (a ready
+            model's value is its ``models.json`` entry).
         smoothing (str): ``"ema"`` | ``"mean"`` | ``"max"``, default ``"ema"``
             (``"max"`` over one block for a calibrated head).
         patience (int): consecutive above-threshold frames to fire, default 3
@@ -130,12 +154,18 @@ class WakeForgeHotwordPlugin(HotWordEngine):
                 "wakeforge plugin needs a 'model' ONNX path in the hotword config "
                 "(train one with `wakeforge-quickstart`)."
             )
-        bundled = model_name in BUNDLED_MODELS
+        revision = self.config.get("models_revision", MODELS_REVISION)
+        entry = None
+        if not model_name.startswith("http") and not isfile(expanduser(model_name)):
+            try:
+                entry = model_entries(revision).get(model_name)
+            except OSError as e:
+                raise _download_failed(model_name, revision, e) from e
         # Fires when the probability crosses the trigger; "ready-model defaults".
         ready_defaults = {"smoothing": "max", "window_size": 1, "patience": 1, "debounce_sec": 2.0}
-        if bundled:
-            model = join(_MODELS_DIR, f"{model_name}.onnx")
-            cfg = {"threshold": BUNDLED_MODELS[model_name], **ready_defaults}
+        if entry:
+            model = download_listed_model(entry, revision)
+            cfg = {"threshold": entry["default_threshold"], **ready_defaults}
         else:
             model = self._resolve(model_name)
             cfg = {"threshold": 0.5, "smoothing": "ema", "window_size": 5, "patience": 3,
@@ -144,9 +174,9 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         head = ort.InferenceSession(model, session_options(self.threads),
                                     providers=["CPUExecutionProvider"])
         meta = head.get_modelmeta().custom_metadata_map
-        if not bundled and "default_threshold" in meta:
+        if not entry and "default_threshold" in meta:
             # The head's own metadata says it is Platt-calibrated (as
-            # ww_trainer-train writes): score it like the bundled models,
+            # ww_trainer-train writes): score it like the ready models,
             # not with the EMA/patience-3 defaults meant for an uncalibrated
             # head, which never cross a calibrated head's near-1.0 scores.
             cfg = {"threshold": float(meta["default_threshold"]), **ready_defaults}
