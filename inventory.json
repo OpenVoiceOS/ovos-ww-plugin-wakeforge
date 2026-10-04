@@ -17,6 +17,15 @@
       "license": "apache-2.0",
       "files": ["config.json", "wakehubert.onnx", "wakehubert_int8.onnx"],
       "use": "WakeHuBERT featurizer the heads run on, downloaded on first use into the Hugging Face cache"
+    },
+    {
+      "id": "TigreGotico/wakephonehubert",
+      "type": "model",
+      "access": "read",
+      "revision": "343b2497cb0ef0310d163eb53e3f0f817260dbf7",
+      "license": "apache-2.0",
+      "files": ["config.json", "wakephonehubert_features_int8.onnx"],
+      "use": "WakePhoneHuBERT featurizer the wakephonehubert heads run on, downloaded on first use into the Hugging Face cache"
     }
   ]
 }
