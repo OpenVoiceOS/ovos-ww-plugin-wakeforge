@@ -8,15 +8,12 @@ A model trained with ``ww_trainer-train --tier wakehubert`` (or
 ``--featurizer-type <name>``) runs on a featurizer that wakeforge downloads by
 name, such as ``wakehubert``. This module resolves the same names to the same
 Hub files, in the shared Hugging Face cache, and scores a stream with them.
-The default featurizer (``wakehubert``, ``wakehubert-int8``) ships inside the
-package and resolves without network.
 """
 from __future__ import annotations
 
 import json
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Dict, Optional
 
 import numpy as np
@@ -77,10 +74,13 @@ _REPOS = {
 }
 
 
+_REVISIONS = {"wakehubert-tiny": "e30726f3a1c28bb5dffadf101fe26c97e0e3c3e1"}
+
+
 def _entry(repo: str, variant: str, frames: Optional[int]) -> PretrainedFeaturizer:
     licence, description, _, _ = _REPOS[repo]
     return PretrainedFeaturizer(f"TigreGotico/{repo}", variant, licence, description,
-                                None if frames is None else frames * 320)
+                                None if frames is None else frames * 320, _REVISIONS.get(repo))
 
 
 PRETRAINED_FEATURIZERS: Dict[str, PretrainedFeaturizer] = {}
@@ -96,18 +96,11 @@ def is_non_commercial(licence: str) -> bool:
     return "-nc" in licence.lower()
 
 
-# Featurizers shipped inside this package, by Hub repository, with the revision
-# they were copied from. Resolving one of them needs no network.
-BUNDLED_REVISIONS = {"TigreGotico/wakehubert-tiny": "e30726f3a1c28bb5dffadf101fe26c97e0e3c3e1"}
-_BUNDLED_DIR = Path(__file__).parent / "featurizers"
-
-
 def resolve_pretrained(name: str, revision: Optional[str] = None) -> tuple[str, dict]:
     """Return ``(onnx_path, config)`` for a pretrained featurizer.
 
-    A featurizer bundled with this package is read from the package when no
-    other revision is pinned; any other is downloaded into the shared Hugging
-    Face cache.
+    The files are downloaded into the shared Hugging Face cache at the
+    featurizer's pinned revision, or at ``revision`` when given.
     """
     if name not in PRETRAINED_FEATURIZERS:
         raise ValueError(
@@ -116,11 +109,6 @@ def resolve_pretrained(name: str, revision: Optional[str] = None) -> tuple[str, 
         )
     entry = PRETRAINED_FEATURIZERS[name]
     rev = revision or entry.revision
-    bundled = BUNDLED_REVISIONS.get(entry.repo_id)
-    if bundled and rev in (None, bundled):
-        folder = _BUNDLED_DIR / entry.repo_id.split("/", 1)[1]
-        config = json.loads((folder / "config.json").read_text(encoding="utf-8"))
-        return str(folder / config["files"][entry.variant]), config
     config_path = hf_hub_download(entry.repo_id, "config.json", revision=rev)
     with open(config_path, encoding="utf-8") as f:
         config = json.load(f)

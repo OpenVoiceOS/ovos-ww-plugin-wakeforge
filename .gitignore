@@ -6,5 +6,3 @@ dist/
 .pytest_cache/
 .idea/
 *.onnx
-!ovos_ww_plugin_wakeforge/models/*.onnx
-!ovos_ww_plugin_wakeforge/featurizers/*/*.onnx
