@@ -131,6 +131,16 @@ Similar-sounding words can trigger each other's model. At the default thresholds
 "hey k9", `wakehubert_android` sometimes on "hey floyd", `wakehubert_computer` and `wakehubert_hey_computer` on each
 other's words, and `wakehubert_sheila` on "computer". Raise the threshold when two of these models run side by side.
 
+## WakePhoneHuBERT
+
+[WakePhoneHuBERT](https://huggingface.co/TigreGotico/wakephonehubert) is a second pretrained featurizer, named
+`wakephonehubert-int8`. It is the WakeHuBERT tiny trunk with an active-speaker VAD head and an IPA phoneme head
+added, 3.5 MB in all. Each frame is 521 numbers at 50 frames per second: the 128 WakeHuBERT features, one
+speech-activity probability and 392 phoneme posteriors. The phoneme posteriors run 100 ms behind the audio, and a
+frame depends on the last 2.6 s of audio at most, so it streams like WakeHuBERT. Wake-word models trained on it are
+named `wakephonehubert_<word>`. They name the featurizer in their own metadata, so a model path is all that
+`model` needs, and the plugin downloads the featurizer on first use into the shared Hugging Face cache.
+
 ## Use your own model
 
 Point `model` at the classifier ONNX that wakeforge exported, and `featurizer` at its feature

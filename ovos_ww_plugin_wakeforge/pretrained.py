@@ -90,6 +90,13 @@ for _repo, (_, _, _fp32, _int8) in _REPOS.items():
 PRETRAINED_FEATURIZERS["wakehubert"] = PRETRAINED_FEATURIZERS["wakehubert-tiny"]
 PRETRAINED_FEATURIZERS["wakehubert-int8"] = PRETRAINED_FEATURIZERS["wakehubert-tiny-int8"]
 
+# WakePhoneHuBERT publishes only the joined 521-wide features output (hubert 0-128,
+# vad 128-129, ipa 129-521); the receptive field is 131 frames of 320 samples.
+PRETRAINED_FEATURIZERS["wakephonehubert-int8"] = PretrainedFeaturizer(
+    "TigreGotico/wakephonehubert", "features_int8", _APACHE,
+    "WakeHuBERT-tiny trunk with active-speaker VAD and IPA heads, 521 features",
+    41920, "343b2497cb0ef0310d163eb53e3f0f817260dbf7")
+
 
 def is_non_commercial(licence: str) -> bool:
     """True for Creative Commons NonCommercial licences (``*-nc-*``)."""
