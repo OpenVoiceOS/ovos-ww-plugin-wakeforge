@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.8.0a1) (2026-10-04)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.7.0a1...0.8.0a1)
+
+**Merged pull requests:**
+
+- feat: calibrated int8 wake-word models named wakehubert\_\<word\> [\#22](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/22) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.7.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.7.0a1) (2026-10-02)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.6.0a1...0.7.0a1)
