@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.10.0a2) (2026-10-04)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.10.0a1...0.10.0a2)
+
+**Merged pull requests:**
+
+- docs: link the browser Spaces in the README [\#27](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/27) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.10.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.10.0a1) (2026-10-04)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.9.0a1...0.10.0a1)
