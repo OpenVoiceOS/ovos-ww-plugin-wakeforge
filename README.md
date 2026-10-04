@@ -1,9 +1,12 @@
 # ovos-ww-plugin-wakeforge
 
 An OpenVoiceOS wake-word plugin that runs models made with
-[wakeforge](https://github.com/TigreGotico/wakeforge). It ships ready models for
-"hey mycroft", "alexa" and "wake up", together with the feature extractor they run on, so it works
-offline with nothing else to download. The runtime needs only `onnxruntime` and `numpy`.
+[wakeforge](https://github.com/TigreGotico/wakeforge). It runs ready models for
+"alexa", "computer", "hello nabu", "hey jarvis", "hey marvin", "hey mycroft", "home assistant", "jarvis", "okay nabu"
+and "wake up". The models are downloaded from the Hugging Face repository
+[OpenVoiceOS/wakehubert-wakewords](https://huggingface.co/OpenVoiceOS/wakehubert-wakewords), and the feature
+extractor they run on from [TigreGotico/wakehubert-tiny](https://huggingface.co/TigreGotico/wakehubert-tiny). The
+runtime needs `onnxruntime`, `numpy` and `huggingface_hub`.
 
 This plugin only runs models. To train a model for your own wake word, use
 [wakeforge](https://github.com/TigreGotico/wakeforge), a wake-word research framework.
@@ -41,29 +44,71 @@ Put this in `mycroft.conf`:
   "hotwords": {
     "hey_mycroft": {
       "module": "ovos-ww-plugin-wakeforge",
-      "model": "hey_mycroft",
+      "model": "wakehubert_hey_mycroft",
       "listen": true
     }
   }
 }
 ```
 
-For the other ready models, set `model` to `alexa`, `wake_up` or `hey_mycroft_synthetic`, and name
-the hotword to match.
+Each ready model is named `wakehubert_<word>`. The first time a model is used, the plugin downloads it from the
+Hugging Face repository `OpenVoiceOS/wakehubert-wakewords` into the shared Hugging Face cache, checks it against the
+SHA-256 in the repository's `models.json`, and reuses the cached file afterwards. The repository revision is pinned
+in the plugin; `models_revision` sets another. The model names are `wakehubert_alexa`, `wakehubert_computer`,
+`wakehubert_hello_nabu`, `wakehubert_hey_jarvis`, `wakehubert_hey_marvin`, `wakehubert_hey_mycroft`,
+`wakehubert_home_assistant`, `wakehubert_jarvis`, `wakehubert_okay_nabu` and `wakehubert_wake_up`. Name the hotword
+to match the model.
 
-"hey mycroft" ships in two versions for comparison. `hey_mycroft` was trained on human
-recordings. `hey_mycroft_synthetic` was trained on synthetic speech only, the same way as
-`alexa` and `wake_up`, so it shows what a model for a word nobody has recorded can reach. The demo
-below runs both side by side.
+`wakehubert_hey_mycroft` was trained on human recordings; every other ready model was trained on synthetic speech
+only.
 
-Each ready model is a small classifier on features from
+Each ready model is a small GRU classifier on features from
 [WakeHuBERT tiny](https://huggingface.co/TigreGotico/wakehubert-tiny), a 0.64M-parameter
-speech feature extractor distilled from HuBERT-base. The score is a calibrated probability
-that the last 1.5 s holds the wake word. Each model fires at its own default trigger (0.965 for `hey_mycroft`,
-0.998 for `hey_mycroft_synthetic`, 0.99 for `alexa`, 0.990 for `wake_up`), and after a detection it stays quiet for 2 s. Set
-`"threshold"` to change the trade-off: a lower value fires more readily and falsely more often. With a
-microphone whose gain is far too high or too low, `"agc": true` levels the audio before scoring.
-Model licences are listed in `ovos_ww_plugin_wakeforge/models/NOTICE`.
+speech feature extractor distilled from HuBERT-base. The score is the probability
+that the last 1.5 s holds the wake word. Each model fires at its own default threshold, read from `models.json`,
+and after a detection it stays quiet for 2 s. With a microphone whose gain is far too high or too low,
+`"agc": true` levels the audio before scoring. Each model's licence and training data are listed in the
+repository's `models.json` and its model card.
+
+## Choosing a threshold
+
+Set `"threshold"` in the hotword config to trade missed wake words against false activations. A lower value
+fires more readily and falsely more often; a higher value misses more wake words and fires falsely less often.
+
+On a calibrated model the score is mapped so that a threshold of 0.5 targets about one false activation per hour,
+fitted on the calibration audio (LibriSpeech development speech, babble and AudioSet noise); on other audio the rate
+at 0.5 differs from word to word, so the measured figures below are the guide. The default threshold is the point that maximises F2, which weighs recall above precision. Raising the threshold toward 0.8 or 0.9 trades recall for
+fewer false activations, and lowering it does the opposite. The calibrated models run on the int8 WakeHuBERT
+featurizer.
+
+The uncalibrated models (`wakehubert_computer`, `wakehubert_hey_mycroft` and
+`wakehubert_wake_up`) output a probability too, but their score is not mapped to a false-activation rate, so their
+threshold is not a calibrated knob: the same number gives a different trade-off on each of them, and useful values
+sit close to 1. They run on the float32 featurizer.
+
+Measured through this plugin at the default threshold and at 0.8. Recall is the share of test clips detected;
+false activations are counted per hour of negative audio.
+
+| model | calibrated | default threshold | recall at default | false activations/h at default | recall at 0.8 | false activations/h at 0.8 | recall test set |
+|---|---|---|---|---|---|---|---|
+| `wakehubert_jarvis` | yes | 0.57 | 98.4% | 0.69 | 93.8% | 0.15 | 384 Picovoice recordings of real speakers |
+| `wakehubert_alexa` | yes | 0.40 | 86.7% | 0.69 | 73.3% | 0.13 | 315 Picovoice recordings of real speakers |
+| `wakehubert_hey_jarvis` | yes | 0.16 | 94.5% | 0.09 | 86.2% | 0.02 | synthetic test set |
+| `wakehubert_hey_marvin` | yes | 0.34 | 97.4% | 0.95 | 90.7% | 0.24 | synthetic test set |
+| `wakehubert_home_assistant` | yes | 0.19 | 91.1% | 0.30 | 84.2% | 0.15 | synthetic test set |
+| `wakehubert_okay_nabu` | yes | 0.45 | 92.0% | 0.26 | 75.4% | 0.02 | synthetic test set |
+| `wakehubert_hello_nabu` | yes | 0.49 | 80.9% | 0.39 | 65.2% | 0.02 | synthetic test set |
+| `wakehubert_computer` | no | 0.99 | | | | | |
+| `wakehubert_hey_mycroft` | no | 0.965 | | | | | |
+| `wakehubert_wake_up` | no | 0.990 | | | | | |
+
+For `wakehubert_jarvis` and `wakehubert_alexa` the false activations are counted over 46.5 h of negative audio.
+The synthetic test sets are voices that no model was trained on, but they are still synthetic speech, so recall on
+real speakers can be lower for those words.
+
+Similar-sounding words can trigger each other's model. At the default thresholds, `wakehubert_jarvis` fires on
+"hey jarvis", and `wakehubert_hello_nabu`, `wakehubert_hey_marvin` and `wakehubert_okay_nabu` can fire on each
+other's words. Raise the threshold when two of these models run side by side.
 
 ## Use your own model
 
@@ -93,10 +138,11 @@ carries a calibrated `default_threshold` uses it, together with the ready-model 
 | key | default | description |
 |-----|---------|-------------|
 | `featurizer` | — (required) | feature-extractor ONNX (path or URL), or a pretrained featurizer name such as `wakehubert`; optional when the model names its featurizer |
-| `featurizer_revision` | bundled or latest | Hugging Face revision (branch, tag or commit) of a pretrained featurizer; a revision other than the bundled one is downloaded |
-| `model` | — (required) | classifier-head ONNX (path or URL), or a ready model: `alexa`, `hey_mycroft`, `hey_mycroft_synthetic`, `wake_up` |
+| `featurizer_revision` | pinned per featurizer | Hugging Face revision (branch, tag or commit) of a pretrained featurizer |
+| `models_revision` | pinned in the plugin | Hugging Face revision of the `OpenVoiceOS/wakehubert-wakewords` repository that a ready model is downloaded from |
+| `model` | — (required) | classifier-head ONNX (path or URL), or a ready model: `wakehubert_alexa`, `wakehubert_computer`, `wakehubert_hello_nabu`, `wakehubert_hey_jarvis`, `wakehubert_hey_marvin`, `wakehubert_hey_mycroft`, `wakehubert_home_assistant`, `wakehubert_jarvis`, `wakehubert_okay_nabu`, `wakehubert_wake_up` |
 | `vad` | none | optional VAD ONNX for an extra channel |
-| `threshold` | `0.5` | detection threshold; a ready model or any head whose ONNX metadata carries `default_threshold` uses that instead (`0.99` alexa, `0.965` hey_mycroft, `0.998` hey_mycroft_synthetic, `0.990` wake_up) |
+| `threshold` | `0.5` | detection threshold; a ready model or any head whose ONNX metadata carries `default_threshold` uses that instead (see [Choosing a threshold](#choosing-a-threshold)) |
 | `smoothing` | `ema` | `ema` \| `mean` \| `max` (a calibrated head: `max`) |
 | `patience` | `3` | consecutive above-threshold frames to fire (a calibrated head: `1`) |
 | `debounce_sec` | `1.0` | minimum seconds between detections (a calibrated head: `2.0`) |
@@ -112,7 +158,7 @@ carries a calibrated `default_threshold` uses it, together with the ready-model 
 
 URL models are cached under `${XDG_DATA_HOME}/wakeforge/`.
 
-Pretrained featurizers other than the bundled `wakehubert` and `wakehubert-int8` are downloaded from the Hugging Face Hub on first use. A featurizer that depends on future audio, or on unbounded history, cannot run on a live stream and is refused at load time.
+Pretrained featurizers, `wakehubert` and `wakehubert-int8` included, are downloaded from the Hugging Face Hub on first use. A featurizer that depends on future audio, or on unbounded history, cannot run on a live stream and is refused at load time.
 
 ## Compare against other engines
 
@@ -126,15 +172,14 @@ ovos-wakeforge-demo --wakeword hey_mycroft
 
 | engine | what runs |
 |---|---|
-| `wakehubert` | this plugin with its ready model for the word |
-| `wakehubert-synthetic` | this plugin with its synthetic-only model for the word (`hey_mycroft` only) |
+| `wakehubert` | this plugin with its ready model for the word (`wakehubert_<word>`) |
 | `openwakeword` | the `openwakeword` library with its pretrained model for the word |
 | `microwakeword` | the `pymicro-wakeword` library with its v2 model for the word |
-| `precise-onnx` | the OVOS precise-onnx plugin with its hey mycroft model (no alexa or wake_up model exists) |
+| `precise-onnx` | the OVOS precise-onnx plugin with its hey mycroft model (it has no model for the other words) |
 
-`openwakeword` and `microwakeword` have no `wake_up` model either; running `--wakeword
-wake_up` shows those two (and `precise-onnx`) in the red "not loaded" row, with `wakehubert`
-the only bar on the panel.
+An engine with no model for the chosen word is listed in the red "not loaded" row. microWakeWord
+has an `okay_nabu` model, which runs for `--wakeword okay_nabu`. No other engine has a `computer` or
+`wake_up` model, so for those words `wakehubert` is the only bar on the panel.
 
 Each engine has a row with a bar showing its wake-word probability and a `|` where it
 triggers. When a bar crosses its marker the row turns green with "WAKE WORD!", the
@@ -143,7 +188,7 @@ are ignored for 2 s. A meter shows the microphone level and warns when the input
 An engine that fails to load is listed in a red "not loaded" row with the reason, and an
 engine that fails while running shows the error in its own row.
 
-Options: `--wakeword alexa|hey_mycroft|wake_up`, `--threshold` (WakeHuBERT trigger probability),
+Options: `--wakeword alexa|computer|hello_nabu|hey_jarvis|hey_marvin|hey_mycroft|home_assistant|jarvis|okay_nabu|wake_up`, `--threshold` (WakeHuBERT trigger probability),
 `--oww-threshold` (default 0.5), `--mww-cutoff` (default: the model's shipped cutoff),
 `--precise-sensitivity` (default 0.5), `--only wakehubert,openwakeword,...`, `--device`
 (see `python -m sounddevice`), `--agc` (level each WakeHuBERT window) and `--file clip.wav`,

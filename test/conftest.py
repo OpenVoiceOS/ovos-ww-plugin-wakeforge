@@ -189,23 +189,7 @@ def standin_hub(tmp_path, monkeypatch):
     }
     hub = StandinHub(str(feat), config, tmp_path)
     monkeypatch.setattr(pretrained, "hf_hub_download", hub.download)
-    monkeypatch.setattr(pretrained, "BUNDLED_REVISIONS", {})
     return hub
-
-
-@pytest.fixture
-def offline(monkeypatch):
-    """Fail any Hub download or socket connection, as on a device with no network."""
-    import socket
-
-    from ovos_ww_plugin_wakeforge import pretrained
-
-    def refuse(*args, **kwargs):
-        raise OSError("network access in an offline test")
-
-    monkeypatch.setattr(pretrained, "hf_hub_download", refuse)
-    monkeypatch.setattr(socket.socket, "connect", refuse)
-    monkeypatch.setattr(socket, "create_connection", refuse)
 
 
 @pytest.fixture
