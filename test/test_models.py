@@ -46,6 +46,8 @@ _METADATA = {
     "wakehubert_hey_rhasspy": {"wake_word": "hey rhasspy", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_hey_robin": {"wake_word": "hey robin", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_hey_scout": {"wake_word": "hey scout", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_hey_stemcom": {"wake_word": "hey stemcom", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_hey_ziggy": {"wake_word": "hey ziggy", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_home_assistant": {"wake_word": "home assistant", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_jarvis": {"wake_word": "jarvis", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_marvin": {"wake_word": "marvin", "training_data_has": _SYNTHETIC_ONLY},
