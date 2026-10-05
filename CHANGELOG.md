@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.15.0a1) (2026-10-05)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.14.0a1...0.15.0a1)
+
+**Merged pull requests:**
+
+- feat: calibrated int8 hey mycroft model [\#39](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/39) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.14.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.14.0a1) (2026-10-05)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.13.0a1...0.14.0a1)
