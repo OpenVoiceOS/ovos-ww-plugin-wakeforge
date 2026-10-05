@@ -111,21 +111,22 @@ def _segment(chunk: str, table: Dict[str, int], longest: int) -> Optional[List[i
 def default_threshold(n_phones: int) -> float:
     """Starting threshold for a keyword of ``n_phones`` phones.
 
-    Per-word thresholds set at 1 false activation per hour on negatives only
-    (LibriSpeech dev-clean and dev-other, and held-out non-speech, 13.1 h) fall
-    with the keyword's length, from -0.01 to -0.04 for four phones to -0.29 to
-    -0.39 for ten or eleven, about 0.048 per phone over 23 words. The default
-    is that line, rounded to 0.045 per phone so it errs to fewer false
-    activations, and held at -0.30 from ten phones on, where the calibrated
-    thresholds stop falling. A single threshold for all lengths does not work:
-    -0.20, the median of the 23, gives "jarvis" 39 and "alexa" 74 false
-    activations per hour. Checked on the public 31.1 h of test negatives
-    (LibriSpeech test-clean, test-other, a train-other-500 sample, non-speech):
-    a median of 0.67 false activations per hour over the 23 words (0.42 over
-    those of six phones or more), with "alexa" the worst at 7.6, and mean
-    recall 74.8% against 79.7% at each word's own calibrated threshold.
+    The threshold applies to the lowest of ``confirm_blocks`` consecutive window
+    scores (see the class docstring). Thresholds that give 1 false activation per hour on
+    negatives only (LibriSpeech dev-clean and dev-other, and held-out
+    non-speech, 13.1 h) fall with the keyword's length, so a single threshold
+    for all lengths does not work. The rule is the line of 0.05 per phone from
+    0 at three phones, held at -0.29 from nine phones on, chosen on those
+    negatives over 28 keywords so that their median false-activation rate,
+    the number of keywords above 1 per hour and the largest rate are all no
+    higher than with one window and the previous rule. Checked on the public
+    31.1 h of test negatives (LibriSpeech test-clean, test-other, a
+    train-other-500 sample, non-speech): a median of 0.61 false activations
+    per hour over the 28 keywords, 9 of them above 1, "alexa" the worst at
+    7.7, with mean recall 88.1% on 22 synthetic held-out-voice test sets and
+    54.4% on 9 recorded ones.
     """
-    return max(-0.045 * (n_phones - 3), -0.30)
+    return max(-0.05 * (n_phones - 3), -0.29)
 
 
 def keyword_score(log_post: np.ndarray, ids: Sequence[int]) -> float:
@@ -202,6 +203,10 @@ class WakePhoneHuBERTZeroShotPlugin(HotWordEngine):
         threshold (float): detection threshold on the length-normalised score
             (0 is a perfect match), for every pronunciation. Default per
             pronunciation from its phone count, see :func:`default_threshold`.
+        confirm_blocks (int): consecutive windows a pronunciation must reach
+            its threshold in before the word fires, default 2. A spurious match
+            in running speech tends to peak in one window, the spoken word
+            holds its score over several; 1 fires on the first window.
         debounce_sec (float): minimum seconds between detections, default 2.0.
         featurizer_revision (str): Hub revision of TigreGotico/wakephonehubert,
             default the pinned revision, whose ONNX is checked against its
@@ -236,6 +241,9 @@ class WakePhoneHuBERTZeroShotPlugin(HotWordEngine):
         else:
             self.thresholds = [default_threshold(len(k)) for k in self.keywords]
         self.debounce_sec = float(self.config.get("debounce_sec", 2.0))
+        self.confirm_blocks = self.config.get("confirm_blocks", 2)
+        if isinstance(self.confirm_blocks, bool) or not isinstance(self.confirm_blocks, int) or self.confirm_blocks < 1:
+            raise ValueError(f"confirm_blocks must be an integer of at least 1, got {self.confirm_blocks!r}")
 
         options = session_options(int(self.config.get("onnx_threads", 1)))
         # Graph optimisation fuses the int8 graph into kernels that differ between CPUs (AVX2-only x86 against
@@ -271,10 +279,12 @@ class WakePhoneHuBERTZeroShotPlugin(HotWordEngine):
             self._window = np.concatenate([self._window[BLOCK:], block])
             scores = self.score_window(self._window)
             self.last_score = max(scores)
+            self._recent = (self._recent + [scores])[-self.confirm_blocks:]
             if self._quiet_samples > 0:
                 self._quiet_samples -= BLOCK
                 continue
-            if any(s >= t for s, t in zip(scores, self.thresholds)):
+            if len(self._recent) == self.confirm_blocks and any(
+                    min(r[i] for r in self._recent) >= t for i, t in enumerate(self.thresholds)):
                 self.trigger_flag = True
                 self._quiet_samples = int(self.debounce_sec * SAMPLE_RATE)
 
@@ -287,6 +297,7 @@ class WakePhoneHuBERTZeroShotPlugin(HotWordEngine):
         return False
 
     def reset(self):
-        """Clear the audio window between detections; the debounce carries on."""
+        """Clear the audio window and recent scores between detections; the debounce carries on."""
         self._buffer = np.zeros(0, dtype=np.float32)
+        self._recent = []
         self._window = np.zeros(WINDOW, dtype=np.float32)
