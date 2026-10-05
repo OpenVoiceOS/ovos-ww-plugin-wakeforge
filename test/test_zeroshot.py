@@ -139,6 +139,67 @@ def test_detection_is_debounced_and_reported_once():
     assert not eng.found_wake_word()
 
 
+def _scripted(eng, scores):
+    """Replace the featurizer and scorer with a fixed sequence of window scores, one per 80 ms block."""
+    seq = iter(scores)
+    eng.score_window = lambda audio: [next(seq)]
+    return np.zeros(len(scores) * zeroshot.BLOCK, np.int16)
+
+
+def test_one_window_above_threshold_does_not_fire():
+    eng = WakePhoneHuBERTZeroShotPlugin("hey jarvis", {"ipa": HEY_JARVIS, "threshold": -0.2})
+    assert eng.confirm_blocks == 2
+    pcm = _scripted(eng, [-0.9, -0.1, -0.9, -0.9, -0.1, -0.5, -0.1, -0.9])
+    assert _run(eng, pcm, chunk=zeroshot.BLOCK) == []
+
+
+def test_consecutive_windows_above_threshold_fire_once():
+    eng = WakePhoneHuBERTZeroShotPlugin("hey jarvis", {"ipa": HEY_JARVIS, "threshold": -0.2})
+    pcm = _scripted(eng, [-0.9, -0.1, -0.15, -0.1, -0.05, -0.9])
+    assert len(_run(eng, pcm, chunk=zeroshot.BLOCK)) == 1
+
+
+def test_confirm_blocks_one_fires_on_a_single_window():
+    eng = WakePhoneHuBERTZeroShotPlugin("hey jarvis", {"ipa": HEY_JARVIS, "threshold": -0.2, "confirm_blocks": 1})
+    pcm = _scripted(eng, [-0.9, -0.1, -0.9, -0.9])
+    assert len(_run(eng, pcm, chunk=zeroshot.BLOCK)) == 1
+    with pytest.raises(ValueError, match="confirm_blocks"):
+        WakePhoneHuBERTZeroShotPlugin("hey jarvis", {"ipa": HEY_JARVIS, "confirm_blocks": 0})
+
+
+def test_a_hit_in_the_first_window_only_does_not_fire():
+    eng = WakePhoneHuBERTZeroShotPlugin("hey jarvis", {"ipa": HEY_JARVIS, "threshold": -0.2})
+    pcm = _scripted(eng, [-0.1, -0.9, -0.9, -0.9])
+    assert _run(eng, pcm, chunk=zeroshot.BLOCK) == []
+
+
+def test_confirmation_needs_the_same_pronunciation_twice():
+    config = {"ipa": [HEY_JARVIS, HEY_CHATTERBOX], "threshold": -0.2}
+    eng = WakePhoneHuBERTZeroShotPlugin("hey jarvis", config)
+    seq = iter([[-0.1, -0.9], [-0.9, -0.1]] * 3)
+    eng.score_window = lambda audio: next(seq)
+    pcm = np.zeros(6 * zeroshot.BLOCK, np.int16)
+    assert _run(eng, pcm, chunk=zeroshot.BLOCK) == []
+
+    eng = WakePhoneHuBERTZeroShotPlugin("hey jarvis", config)
+    seq = iter([[-0.9, -0.1], [-0.9, -0.1], [-0.9, -0.9]])
+    eng.score_window = lambda audio: next(seq)
+    pcm = np.zeros(3 * zeroshot.BLOCK, np.int16)
+    assert len(_run(eng, pcm, chunk=zeroshot.BLOCK)) == 1
+
+
+def test_a_detection_clears_the_confirmation_history():
+    eng = WakePhoneHuBERTZeroShotPlugin("hey jarvis", {"ipa": HEY_JARVIS, "threshold": -0.2, "debounce_sec": 0})
+    pcm = _scripted(eng, [-0.1, -0.1, -0.1, -0.9])
+    assert len(_run(eng, pcm, chunk=zeroshot.BLOCK)) == 1
+
+
+def test_confirm_blocks_must_be_an_integer_of_at_least_one():
+    for value in (0, -1, 2.7, "abc", "2", True, None):
+        with pytest.raises(ValueError, match=r"confirm_blocks.*got"):
+            WakePhoneHuBERTZeroShotPlugin("hey jarvis", {"ipa": HEY_JARVIS, "confirm_blocks": value})
+
+
 def test_ipa_tokens_are_the_teacher_ids(table):
     for ipa, ids in TEACHER_IDS.items():
         assert tokenize_ipa(ipa, table) == ids
@@ -177,9 +238,9 @@ def test_unknown_characters_are_named(table):
 
 
 def test_default_threshold_follows_phone_count():
-    assert default_threshold(5) == pytest.approx(-0.09)
-    assert default_threshold(7) == pytest.approx(-0.18)
-    assert default_threshold(10) == default_threshold(14) == -0.30
+    assert default_threshold(5) == pytest.approx(-0.10)
+    assert default_threshold(7) == pytest.approx(-0.20)
+    assert default_threshold(9) == default_threshold(14) == -0.29
     eng = WakePhoneHuBERTZeroShotPlugin("jarvis", {"ipa": JARVIS, "threshold": -0.5})
     assert eng.thresholds == [-0.5]
 

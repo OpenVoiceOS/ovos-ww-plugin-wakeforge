@@ -58,7 +58,7 @@ Calibrated models make `threshold` a sensitivity setting. A higher value gives f
 
 ## Zero-shot wake words
 
-The `ovos-ww-plugin-wakeforge-zeroshot` engine detects a wake word from its IPA phones alone, with no recordings and no trained model. It scores WakePhoneHuBERT's phoneme output for the phones in `ipa`, every 80 ms over the last 1.5 s of audio.
+The `ovos-ww-plugin-wakeforge-zeroshot` engine detects a wake word from its IPA phones alone, with no recordings and no trained model. It scores WakePhoneHuBERT's phoneme output for the phones in `ipa`, every 80 ms over the last 1.5 s of audio. The word fires when two consecutive windows both reach the threshold (`confirm_blocks`, default 2), which removes single-window matches inside ordinary speech.
 
 ```json
 "hotwords": {
