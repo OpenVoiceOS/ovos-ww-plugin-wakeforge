@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.14.0a1) (2026-10-05)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.13.0a1...0.14.0a1)
+
+**Merged pull requests:**
+
+- feat: hey potato wake word; alexa model retrained [\#38](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/38) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.13.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.13.0a1) (2026-10-05)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.12.0a1...0.13.0a1)
