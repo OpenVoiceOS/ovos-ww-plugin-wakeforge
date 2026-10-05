@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.12.0a1) (2026-10-05)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.11.0a1...0.12.0a1)
+
+**Merged pull requests:**
+
+- feat: hey ziggy and hey stemcom wake words [\#34](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/34) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.11.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.11.0a1) (2026-10-05)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.10.0a3...0.11.0a1)
