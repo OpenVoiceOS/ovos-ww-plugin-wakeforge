@@ -55,6 +55,7 @@ Repository = "https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge"
 
 [project.entry-points."opm.wake_word"]
 ovos-ww-plugin-wakeforge = "ovos_ww_plugin_wakeforge:WakeForgeHotwordPlugin"
+ovos-ww-plugin-wakeforge-zeroshot = "ovos_ww_plugin_wakeforge.zeroshot:WakePhoneHuBERTZeroShotPlugin"
 
 [tool.setuptools]
 include-package-data = true

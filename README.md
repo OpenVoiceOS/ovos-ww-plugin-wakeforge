@@ -56,6 +56,18 @@ Calibrated models make `threshold` a sensitivity setting. A higher value gives f
 
 [WakePhoneHuBERT](https://huggingface.co/TigreGotico/wakephonehubert) is a second featurizer, named `wakephonehubert-int8`. It adds a voice-activity head and an IPA phoneme head to the WakeHuBERT trunk. Models trained on it are named `wakephonehubert_<word>`. They name their featurizer in their own metadata, so `model` is the only key you need. The plugin downloads the featurizer on first use.
 
+## Zero-shot wake words
+
+The `ovos-ww-plugin-wakeforge-zeroshot` engine detects a wake word from its IPA phones alone, with no recordings and no trained model. It scores WakePhoneHuBERT's phoneme output for the phones in `ipa`, every 80 ms over the last 1.5 s of audio.
+
+```json
+"hotwords": {
+  "hey_jarvis": {"module": "ovos-ww-plugin-wakeforge-zeroshot", "ipa": "h eɪ dʒ ɑːɹ v ɪ s"}
+}
+```
+
+`ipa` can be a list of pronunciations. Get the phones once with eSpeak NG, which the default thresholds were calibrated with: `espeak-ng -q --ipa -v en-us "hey jarvis"`. The plugin needs no phonemiser. The default threshold depends on the number of phones and is a starting point: set `"threshold"` (0 is a perfect match) to tune it. Use a phrase of at least six phones, ideally two words. Short single words are unreliable: train a model for them.
+
 ## Use your own model
 
 Set `model` to the classifier ONNX that wakeforge exported. Set `featurizer` to its feature-extractor ONNX. Both can be local paths or URLs. A model trained on a pretrained featurizer names it in its metadata, so you can leave `featurizer` out. Train models with [wakeforge](https://github.com/TigreGotico/wakeforge).
