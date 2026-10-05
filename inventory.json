@@ -4,7 +4,7 @@
       "id": "OpenVoiceOS/wakehubert-wakewords",
       "type": "model",
       "access": "read",
-      "revision": "8fcc7c9b47e81f4039951bc4d55ff924bfe2b987",
+      "revision": "260a62fce5c9215a3c651a38533e65cbf84c584d",
       "license": "apache-2.0",
       "files": ["models.json", "models/wakehubert_<word>.onnx"],
       "use": "wake-word heads, downloaded on first use into the Hugging Face cache and checked against the sha256 in models.json"
