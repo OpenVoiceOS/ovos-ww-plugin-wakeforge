@@ -42,7 +42,7 @@ _METADATA = {
     "wakehubert_hey_jarvis": {"wake_word": "hey jarvis", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_hey_k9": {"wake_word": "hey k9", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_hey_marvin": {"wake_word": "hey marvin", "training_data_has": _SYNTHETIC_ONLY},
-    "wakehubert_hey_mycroft": {"wake_word": "hey mycroft", "training_data_has": "human recordings"},
+    "wakehubert_hey_mycroft": {"wake_word": "hey mycroft", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_hey_potato": {"wake_word": "hey potato", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_hey_rhasspy": {"wake_word": "hey rhasspy", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_hey_robin": {"wake_word": "hey robin", "training_data_has": _SYNTHETIC_ONLY},
@@ -124,8 +124,6 @@ def test_listed_heads_io_and_metadata(word):
     assert "Apache-2.0" in meta["license"]
     if "default_threshold" in meta:
         assert abs(float(meta["default_threshold"]) - ENTRIES[word]["default_threshold"]) <= 5e-4
-    if word == "wakehubert_hey_mycroft":
-        assert meta["training_data"] == expected["training_data_has"]
     assert expected["training_data_has"] in meta["training_data"]
     if expected["training_data_has"].startswith("synthetic-wakeword"):
         assert "CC" in meta["training_data"] and "4.0" in meta["training_data"]

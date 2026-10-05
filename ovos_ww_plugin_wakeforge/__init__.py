@@ -36,7 +36,7 @@ _FEATURIZER_META_KEYS = ("pretrained_featurizer", "featurizer")
 # calibration folded in, so it outputs the probability that the window holds
 # the wake word; its ``pretrained_featurizer`` metadata names the featurizer.
 MODELS_REPO = "OpenVoiceOS/wakehubert-wakewords"
-MODELS_REVISION = "8fcc7c9b47e81f4039951bc4d55ff924bfe2b987"
+MODELS_REVISION = "260a62fce5c9215a3c651a38533e65cbf84c584d"
 
 
 def _download_failed(name, revision, error):
