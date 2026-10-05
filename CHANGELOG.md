@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.11.0a1) (2026-10-05)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.10.0a3...0.11.0a1)
+
+**Merged pull requests:**
+
+- feat: zero-shot wake words from IPA with WakePhoneHuBERT [\#32](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/32) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.10.0a3](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.10.0a3) (2026-10-04)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.10.0a2...0.10.0a3)
