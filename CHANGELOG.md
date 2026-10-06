@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.16.0a1) (2026-10-06)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.15.0a2...0.16.0a1)
+
+**Merged pull requests:**
+
+- feat: wake-up models in Spanish, German, Dutch and Italian [\#45](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/45) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.15.0a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.15.0a2) (2026-10-06)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.15.0a1...0.15.0a2)
