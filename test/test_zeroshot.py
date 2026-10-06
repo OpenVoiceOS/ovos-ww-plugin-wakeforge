@@ -245,17 +245,10 @@ def test_default_threshold_follows_phone_count():
     assert eng.thresholds == [-0.5]
 
 
-def test_session_runs_the_int8_graph_unfused(monkeypatch):
-    seen = {}
-    session = ort.InferenceSession
-
-    def spy(path, options, **kwargs):
-        seen["level"] = options.graph_optimization_level
-        return session(path, options, **kwargs)
-
-    monkeypatch.setattr(zeroshot.ort, "InferenceSession", spy)
-    WakePhoneHuBERTZeroShotPlugin("jarvis", {"ipa": JARVIS})
-    assert seen["level"] == ort.GraphOptimizationLevel.ORT_DISABLE_ALL
+def test_session_runs_the_int8_graph_unfused():
+    eng = WakePhoneHuBERTZeroShotPlugin("jarvis", {"ipa": JARVIS})
+    options = eng.session.get_session_options()
+    assert options.graph_optimization_level == ort.GraphOptimizationLevel.ORT_DISABLE_ALL
 
 
 def test_loads_through_opm_entry_point():

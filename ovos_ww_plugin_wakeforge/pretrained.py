@@ -20,7 +20,7 @@ import numpy as np
 import onnxruntime as ort
 from huggingface_hub import hf_hub_download
 
-from ovos_ww_plugin_wakeforge.inference import session_options
+from ovos_ww_plugin_wakeforge.inference import featurize, session_options, shared_session
 
 logger = logging.getLogger(__name__)
 
@@ -197,10 +197,8 @@ class OnnxWindowedWakeWord:
                  hop_samples: int, context_samples: int, isolated: bool = False,
                  agc: bool = False, threads: int = 1) -> None:
         providers, so = ["CPUExecutionProvider"], session_options(threads)
-        self.ext = ort.InferenceSession(featurizer_path, so, providers=providers)
+        self.ext = shared_session(featurizer_path, threads)
         self.head = ort.InferenceSession(head_path, so, providers=providers)
-        self._ext_in = self.ext.get_inputs()[0].name
-        self._ext_out = self.ext.get_outputs()[0].name
         self._head_in = self.head.get_inputs()[0].name
         self._head_out = self.head.get_outputs()[0].name
         self.window = window
@@ -236,7 +234,7 @@ class OnnxWindowedWakeWord:
         self._feats: Optional[np.ndarray] = None
 
     def _featurize(self, audio: np.ndarray) -> np.ndarray:
-        return self.ext.run([self._ext_out], {self._ext_in: audio[np.newaxis, :]})[0]
+        return featurize(self.ext, audio[np.newaxis, :])
 
     def push(self, audio_chunk: np.ndarray) -> float:
         """Feed one chunk (a multiple of the hop) and return the head's probability."""
