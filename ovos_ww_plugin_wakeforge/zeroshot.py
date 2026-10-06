@@ -15,7 +15,7 @@ import onnxruntime as ort
 from ovos_plugin_manager.templates.hotwords import HotWordEngine
 from ovos_utils.log import LOG
 
-from ovos_ww_plugin_wakeforge.inference import session_options
+from ovos_ww_plugin_wakeforge.inference import featurize, shared_session
 from ovos_ww_plugin_wakeforge.pretrained import PRETRAINED_FEATURIZERS, resolve_pretrained
 
 FEATURIZER = "wakephonehubert-int8"
@@ -245,14 +245,11 @@ class WakePhoneHuBERTZeroShotPlugin(HotWordEngine):
         if isinstance(self.confirm_blocks, bool) or not isinstance(self.confirm_blocks, int) or self.confirm_blocks < 1:
             raise ValueError(f"confirm_blocks must be an integer of at least 1, got {self.confirm_blocks!r}")
 
-        options = session_options(int(self.config.get("onnx_threads", 1)))
         # Graph optimisation fuses the int8 graph into kernels that differ between CPUs (AVX2-only x86 against
         # VNNI), and block scores move by up to 0.8. Unfused, x86 CPUs agree to 1e-7 and aarch64 to 1e-3 where
         # the thresholds act, at about 1.4 times the featurizer cost.
-        options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
-        self.session = ort.InferenceSession(model_path, options, providers=["CPUExecutionProvider"])
-        self._in = self.session.get_inputs()[0].name
-        self._out = self.session.get_outputs()[0].name
+        self.session = shared_session(model_path, int(self.config.get("onnx_threads", 1)),
+                                      ort.GraphOptimizationLevel.ORT_DISABLE_ALL)
 
         self.trigger_flag = False
         self.last_score = None
@@ -264,7 +261,7 @@ class WakePhoneHuBERTZeroShotPlugin(HotWordEngine):
 
     def score_window(self, audio: np.ndarray) -> List[float]:
         """Score of every pronunciation over one window of float audio."""
-        feats = self.session.run([self._out], {self._in: audio[np.newaxis, :].astype(np.float32)})[0]
+        feats = featurize(self.session, audio[np.newaxis, :])
         lp = log_posteriors(feats[0, :, self.ipa_slice])
         return [keyword_score(lp, ids) for ids in self.keywords]
 
