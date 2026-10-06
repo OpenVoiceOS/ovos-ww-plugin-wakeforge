@@ -1,7 +1,8 @@
 """The ready models of the Hub repository and the featurizer they run on, downloaded into the Hugging Face cache.
 
 The test clips are synthetic speech (edge-tts voices) saying the wake word; the clips added with the
-calibrated models are in edge-tts voices held out of their training.
+calibrated models are in edge-tts voices held out of their training, and those of the localised wake-up words
+(despierta, aufwachen, wakker worden, sveglia) are OmniVoice voices drawn from seeds no training clip uses.
 """
 import os
 import re
@@ -34,7 +35,9 @@ _SYNTHETIC_ONLY = "synthetic only"
 _METADATA = {
     "wakehubert_alexa": {"wake_word": "alexa", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_android": {"wake_word": "android", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_aufwachen": {"wake_word": "aufwachen", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_computer": {"wake_word": "computer", "training_data_has": "synthetic-wakeword-computer"},
+    "wakehubert_despierta": {"wake_word": "despierta", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_hello_nabu": {"wake_word": "hello nabu", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_hey_chatterbox": {"wake_word": "hey chatterbox", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_hey_computer": {"wake_word": "hey computer", "training_data_has": _SYNTHETIC_ONLY},
@@ -55,7 +58,9 @@ _METADATA = {
     "wakehubert_okay_nabu": {"wake_word": "okay nabu", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_sheila": {"wake_word": "sheila", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_stop": {"wake_word": "stop", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_sveglia": {"wake_word": "sveglia", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_wake_up": {"wake_word": "wake up", "training_data_has": _SYNTHETIC_ONLY},
+    "wakehubert_wakker_worden": {"wake_word": "wakker worden", "training_data_has": _SYNTHETIC_ONLY},
 }
 # Heads exported with their calibration folded into the graph, on the int8
 # featurizer: 0.5 is the probability the calibration targets.
