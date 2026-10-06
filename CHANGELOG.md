@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.0a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.15.0a2) (2026-10-06)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.15.0a1...0.15.0a2)
+
+**Merged pull requests:**
+
+- perf: share featurizer sessions and window outputs between hotwords [\#43](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/43) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.15.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.15.0a1) (2026-10-05)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.14.0a1...0.15.0a1)
