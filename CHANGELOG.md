@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.0a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.17.0a2) (2026-10-09)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.17.0a1...0.17.0a2)
+
+**Merged pull requests:**
+
+- test: recalibrated wake-up models carry their 20 h calibration [\#50](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/50) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.17.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.17.0a1) (2026-10-09)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.16.0a1...0.17.0a1)
