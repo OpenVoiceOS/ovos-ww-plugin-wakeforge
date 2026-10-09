@@ -1,6 +1,6 @@
 # Vendored from wakeforge/inference.py (https://github.com/TigreGotico/wakeforge).
 # wakeforge is the source of truth — keep this copy in sync on runtime changes.
-# Local addition: session_options(), shared_session(), featurize() and the `threads` arguments.
+# Local addition: session_options(), shared_session(), featurize(), StreamingFeaturizer and the `threads` arguments.
 # Pure runtime: numpy + onnxruntime only, no torch.
 """ONNX-only wake word inference — no PyTorch dependency at runtime."""
 from __future__ import annotations
@@ -34,6 +34,10 @@ _LOCK = threading.Lock()
 # Windows whose featurizer output is kept per session: one listener chunk makes one new window per
 # distinct input, and every hotword on the same featurizer asks for it within that chunk.
 RECENT_WINDOWS = 4
+# Chunks of a streaming featurizer kept per session, keyed by the stream they continue: every hotword on the same
+# stream pushes the same chunk within one listener chunk, and a reset stream primes itself with one more.
+_STREAMS: "weakref.WeakKeyDictionary[ort.InferenceSession, OrderedDict]" = weakref.WeakKeyDictionary()
+RECENT_STREAM_CHUNKS = 8
 
 
 def shared_session(path: str, threads: int = 1,
@@ -75,6 +79,69 @@ def featurize(session: ort.InferenceSession, audio: np.ndarray) -> np.ndarray:
             while len(recent) > RECENT_WINDOWS:
                 recent.popitem(last=False)
     return feats
+
+
+class StreamingFeaturizer:
+    """One listener's stream through a stateful featurizer graph.
+
+    The graph (``stream_trunk.py streamify`` in wakeforge) takes ``waveform`` [1, samples], a whole number of hops,
+    and one state input per causal layer, and returns ``features`` and the next state of each layer. The session is
+    the process's shared one for the file. Fed block by block from the zero state, it returns the frames the source
+    featurizer computes over the whole stream at once.
+
+    A stream is named by everything it has been fed since its last reset, so hotwords fed the same audio share one
+    featurizer run per chunk: the first to push a chunk computes its frames and next state, and the others read
+    them. A stream fed different audio, or reset at another moment, has another name and runs on its own.
+    """
+
+    def __init__(self, path: str, hop_samples: int, threads: int = 1) -> None:
+        self.session = shared_session(path, threads)
+        self.hop = hop_samples
+        inputs = self.session.get_inputs()
+        self._wav = inputs[0].name
+        self._names = [i.name for i in inputs[1:]]
+        self._shapes = [i.shape for i in inputs[1:]]
+        if not self._names or not all(isinstance(d, int) for s in self._shapes for d in s):
+            raise ValueError(f"{path} is not a stateful streaming featurizer: it needs state inputs of fixed shape "
+                             "after the waveform")
+        self._outputs = [o.name for o in self.session.get_outputs()]
+        if len(self._outputs) != len(self._names) + 1:
+            raise ValueError(f"{path}: {len(self._names)} state inputs but {len(self._outputs) - 1} state outputs")
+        self.reset()
+
+    def reset(self) -> None:
+        """Start a new stream: every state at zero, as before the first sample."""
+        self.state = [np.zeros(s, dtype=np.float32) for s in self._shapes]
+        self._name = b""
+
+    def push(self, audio: np.ndarray) -> np.ndarray:
+        """Feature frames ``[1, frames, D]`` of ``audio``, a whole number of hops, continuing the stream. The
+        frames and the state are read-only.
+
+        Raises:
+            ValueError: If ``audio`` is not a whole number of hops: the graph would drop the remainder and the
+                stream would lose its place without any error.
+        """
+        audio = np.ascontiguousarray(audio, dtype=np.float32)
+        if audio.size % self.hop:
+            raise ValueError(f"{audio.size} samples is not a whole number of {self.hop}-sample hops")
+        name = hashlib.blake2b(self._name + audio.tobytes(), digest_size=16).digest()
+        with _LOCK:
+            recent = _STREAMS.setdefault(self.session, OrderedDict())
+            hit = recent.get(name)
+        if hit is None:
+            feeds = {self._wav: audio[np.newaxis, :]}
+            feeds.update(zip(self._names, self.state))
+            hit = self.session.run(self._outputs, feeds)
+            for out in hit:
+                out.flags.writeable = False
+            with _LOCK:
+                recent[name] = hit
+                while len(recent) > RECENT_STREAM_CHUNKS:
+                    recent.popitem(last=False)
+        self._name = name
+        feats, *self.state = hit
+        return feats
 
 
 class PredictionSmoother:
