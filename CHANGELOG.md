@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.17.0a1) (2026-10-09)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.16.0a1...0.17.0a1)
+
+**Merged pull requests:**
+
+- feat: Spanish, German, Dutch and Italian wake-up models trained with in-language negatives [\#47](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/47) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.16.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.16.0a1) (2026-10-06)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.15.0a2...0.16.0a1)
