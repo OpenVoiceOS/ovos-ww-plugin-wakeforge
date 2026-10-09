@@ -1,12 +1,7 @@
 # ovos-ww-plugin-wakeforge
 
-An OpenVoiceOS wake-word plugin that runs models made with
-[wakeforge](https://github.com/TigreGotico/wakeforge). It ships ready models for
-"hey mycroft", "alexa" and "wake up", together with the feature extractor they run on, so it works
-offline with nothing else to download. The runtime needs only `onnxruntime` and `numpy`.
-
-This plugin only runs models. To train a model for your own wake word, use
-[wakeforge](https://github.com/TigreGotico/wakeforge), a wake-word research framework.
+An OpenVoiceOS wake-word plugin. It runs wake-word models made with
+[wakeforge](https://github.com/TigreGotico/wakeforge). The models download from Hugging Face on first use.
 
 ## Install
 
@@ -14,24 +9,27 @@ This plugin only runs models. To train a model for your own wake word, use
 pip install --pre ovos-ww-plugin-wakeforge
 ```
 
+## Try it in your browser
+
+Everything runs locally on your machine.
+
+- [WakeHuBERT wake words](https://huggingface.co/spaces/OpenVoiceOS/wakehubert-wakewords-space): every ready model, on your microphone or an uploaded file.
+- [WakePhoneHuBERT](https://huggingface.co/spaces/TigreGotico/wakephonehubert-space): spot a keyword you type, with no trained model.
+
 ## Try it on your laptop
 
-You don't need OpenVoiceOS to try the models. The demo listens to your microphone and runs the ready
-model beside openWakeWord, microWakeWord and Precise, so you can compare them with your own voice:
+The demo listens to your microphone. It runs a ready model next to openWakeWord, microWakeWord and Precise, so you can compare them. Use `--help` for the options.
 
 ```bash
 pip install --pre "ovos-ww-plugin-wakeforge[demo]"
 ovos-wakeforge-demo --wakeword hey_mycroft
 ```
 
-![The live demo: one probability bar per engine, green when it detects the wake word](https://raw.githubusercontent.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/dev/docs/demo.svg)
-
-Say the wake word. Each bar shows one engine's wake-word probability, and `|` marks where that engine
-triggers. See [Compare against other engines](#compare-against-other-engines) for the options.
+![The live demo: one probability bar per engine](https://raw.githubusercontent.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/dev/docs/demo.svg)
 
 ## Use a ready model
 
-Put this in `mycroft.conf`:
+Add this to `mycroft.conf`:
 
 ```json
 {
@@ -41,36 +39,38 @@ Put this in `mycroft.conf`:
   "hotwords": {
     "hey_mycroft": {
       "module": "ovos-ww-plugin-wakeforge",
-      "model": "hey_mycroft",
+      "model": "wakehubert_hey_mycroft",
       "listen": true
     }
   }
 }
 ```
 
-For the other ready models, set `model` to `alexa`, `wake_up` or `hey_mycroft_synthetic`, and name
-the hotword to match.
+Each ready model is named `wakehubert_<word>`. The model card lists all words, thresholds, test results and training data: https://huggingface.co/OpenVoiceOS/wakehubert-wakewords.
 
-"hey mycroft" ships in two versions for comparison. `hey_mycroft` was trained on human
-recordings. `hey_mycroft_synthetic` was trained on synthetic speech only, the same way as
-`alexa` and `wake_up`, so it shows what a model for a word nobody has recorded can reach. The demo
-below runs both side by side.
+## Threshold
 
-Each ready model is a small classifier on features from
-[WakeHuBERT tiny](https://huggingface.co/TigreGotico/wakehubert-tiny), a 0.64M-parameter
-speech feature extractor distilled from HuBERT-base. The score is a calibrated probability
-that the last 1.5 s holds the wake word. Each model fires at its own default trigger (0.965 for `hey_mycroft`,
-0.998 for `hey_mycroft_synthetic`, 0.99 for `alexa`, 0.990 for `wake_up`), and after a detection it stays quiet for 2 s. Set
-`"threshold"` to change the trade-off: a lower value fires more readily and falsely more often. With a
-microphone whose gain is far too high or too low, `"agc": true` levels the audio before scoring.
-Model licences are listed in `ovos_ww_plugin_wakeforge/models/NOTICE`.
+Calibrated models make `threshold` a sensitivity setting. A higher value gives fewer false activations and fewer detections. A lower value gives more of both. Each model has its own default threshold. Set `"threshold"` in the hotword config to change it.
+
+## WakePhoneHuBERT
+
+[WakePhoneHuBERT](https://huggingface.co/TigreGotico/wakephonehubert) is a second featurizer, named `wakephonehubert-int8`. It adds a voice-activity head and an IPA phoneme head to the WakeHuBERT trunk. Models trained on it are named `wakephonehubert_<word>`. They name their featurizer in their own metadata, so `model` is the only key you need. The plugin downloads the featurizer on first use.
+
+## Zero-shot wake words
+
+The `ovos-ww-plugin-wakeforge-zeroshot` engine detects a wake word from its IPA phones alone, with no recordings and no trained model. It scores WakePhoneHuBERT's phoneme output for the phones in `ipa`, every 80 ms over the last 1.5 s of audio. The word fires when two consecutive windows both reach the threshold (`confirm_blocks`, default 2), which removes single-window matches inside ordinary speech.
+
+```json
+"hotwords": {
+  "hey_jarvis": {"module": "ovos-ww-plugin-wakeforge-zeroshot", "ipa": "h eɪ dʒ ɑːɹ v ɪ s"}
+}
+```
+
+`ipa` can be a list of pronunciations. Get the phones once with eSpeak NG, which the default thresholds were calibrated with: `espeak-ng -q --ipa -v en-us "hey jarvis"`. The plugin needs no phonemiser. The default threshold depends on the number of phones and is a starting point: set `"threshold"` (0 is a perfect match) to tune it. Use a phrase of at least six phones, ideally two words. Short single words are unreliable: train a model for them.
 
 ## Use your own model
 
-Point `model` at the classifier ONNX that wakeforge exported, and `featurizer` at its feature
-extractor. Both can be local paths or URLs. A model trained on a pretrained featurizer names
-that featurizer in its own metadata, so `featurizer` can be left out. A model whose metadata
-carries a calibrated `default_threshold` uses it, together with the ready-model smoothing.
+Set `model` to the classifier ONNX that wakeforge exported. Set `featurizer` to its feature-extractor ONNX. Both can be local paths or URLs. A model trained on a pretrained featurizer names it in its metadata, so you can leave `featurizer` out. Train models with [wakeforge](https://github.com/TigreGotico/wakeforge).
 
 ```json
 {
@@ -90,71 +90,18 @@ carries a calibrated `default_threshold` uses it, together with the ready-model 
 
 ## Config keys
 
-| key | default | description |
-|-----|---------|-------------|
-| `featurizer` | — (required) | feature-extractor ONNX (path or URL), or a pretrained featurizer name such as `wakehubert`; optional when the model names its featurizer |
-| `featurizer_revision` | bundled or latest | Hugging Face revision (branch, tag or commit) of a pretrained featurizer; a revision other than the bundled one is downloaded |
-| `model` | — (required) | classifier-head ONNX (path or URL), or a ready model: `alexa`, `hey_mycroft`, `hey_mycroft_synthetic`, `wake_up` |
-| `vad` | none | optional VAD ONNX for an extra channel |
-| `threshold` | `0.5` | detection threshold; a ready model or any head whose ONNX metadata carries `default_threshold` uses that instead (`0.99` alexa, `0.965` hey_mycroft, `0.998` hey_mycroft_synthetic, `0.990` wake_up) |
-| `smoothing` | `ema` | `ema` \| `mean` \| `max` (a calibrated head: `max`) |
-| `patience` | `3` | consecutive above-threshold frames to fire (a calibrated head: `1`) |
-| `debounce_sec` | `1.0` | minimum seconds between detections (a calibrated head: `2.0`) |
-| `window_size` | `5` | smoother rolling window (mean/max) (a calibrated head: `1`) |
-| `ema_alpha` | `0.3` | EMA responsiveness |
-| `block_ms` | `80` | audio is scored in blocks of this length whatever chunk size the listener sends, so patience counts time and the featurizer always gets a full block |
-| `onnx_threads` | `1` | intra-op threads per ONNX session; sessions never spin-wait |
-| `streaming` | `false` | use the stateful streaming (GRU) head; with a pretrained featurizer the head type is read from the model |
-| `gru_window` | `100` | frames the head averages over; with a pretrained featurizer it is read from a streaming head, or from a batch head's `window_frames` metadata, else 1.5 s of frames |
-| `isolated_windows` | `true` | pretrained featurizer with a batch head: featurize each window on its own, as training clips were; `false` featurizes with the past audio each frame depends on |
-| `agc` | `false` | with isolated windows, level each window (peak to 0.5, gain 0.25–4x) before scoring |
-| `hidden_dim` | `128` | GRU hidden size of the streaming head |
+| key | default | meaning |
+|-----|---------|---------|
+| `model` | required | classifier ONNX (path or URL), or a ready model name |
+| `featurizer` | none | feature-extractor ONNX (path or URL), or a pretrained name such as `wakehubert`; optional when the model names one |
+| `threshold` | `0.5` | detection threshold; a ready model or calibrated head uses its own default |
+| `debounce_sec` | `1.0` | minimum seconds between detections (`2.0` for a calibrated head) |
+| `agc` | `false` | level each audio window before scoring; helps when the microphone gain is far too high or low |
+| `models_revision` | pinned | Hugging Face revision of the ready-model repository |
+| `featurizer_revision` | pinned | Hugging Face revision of a pretrained featurizer |
+| `onnx_threads` | `1` | threads per ONNX session |
 
-URL models are cached under `${XDG_DATA_HOME}/wakeforge/`.
-
-Pretrained featurizers other than the bundled `wakehubert` and `wakehubert-int8` are downloaded from the Hugging Face Hub on first use. A featurizer that depends on future audio, or on unbounded history, cannot run on a live stream and is refused at load time.
-
-## Compare against other engines
-
-`ovos-wakeforge-demo` listens to the microphone and runs the ready model next to the other
-wake-word engines that have a model for the word, each fed the same 80 ms chunks:
-
-```bash
-pip install --pre "ovos-ww-plugin-wakeforge[demo]"
-ovos-wakeforge-demo --wakeword hey_mycroft
-```
-
-| engine | what runs |
-|---|---|
-| `wakehubert` | this plugin with its ready model for the word |
-| `wakehubert-synthetic` | this plugin with its synthetic-only model for the word (`hey_mycroft` only) |
-| `openwakeword` | the `openwakeword` library with its pretrained model for the word |
-| `microwakeword` | the `pymicro-wakeword` library with its v2 model for the word |
-| `precise-onnx` | the OVOS precise-onnx plugin with its hey mycroft model (no alexa or wake_up model exists) |
-
-`openwakeword` and `microwakeword` have no `wake_up` model either; running `--wakeword
-wake_up` shows those two (and `precise-onnx`) in the red "not loaded" row, with `wakehubert`
-the only bar on the panel.
-
-Each engine has a row with a bar showing its wake-word probability and a `|` where it
-triggers. When a bar crosses its marker the row turns green with "WAKE WORD!", the
-detection is counted and logged under "recent detections", and that engine's detections
-are ignored for 2 s. A meter shows the microphone level and warns when the input clips.
-An engine that fails to load is listed in a red "not loaded" row with the reason, and an
-engine that fails while running shows the error in its own row.
-
-Options: `--wakeword alexa|hey_mycroft|wake_up`, `--threshold` (WakeHuBERT trigger probability),
-`--oww-threshold` (default 0.5), `--mww-cutoff` (default: the model's shipped cutoff),
-`--precise-sensitivity` (default 0.5), `--only wakehubert,openwakeword,...`, `--device`
-(see `python -m sounddevice`), `--agc` (level each WakeHuBERT window) and `--file clip.wav`,
-which scores a 16 kHz recording instead of the microphone and prints each engine's
-detection times.
-
-## Related projects
-
-- [TigreGotico/wakeforge](https://github.com/TigreGotico/wakeforge) is the wake-word research framework that trains the models this plugin runs.
-- [OpenVoiceOS/ovos-plugin-manager](https://github.com/OpenVoiceOS/ovos-plugin-manager) loads this plugin alongside other speech-to-text, text-to-speech and wake-word plugins.
-- [OpenVoiceOS/ovos-ww-plugin-precise-onnx](https://github.com/OpenVoiceOS/ovos-ww-plugin-precise-onnx) is a sibling wake-word plugin that runs Precise models through ONNX.
+The source documents the other keys (`smoothing`, `patience`, `window_size`, `ema_alpha`, `block_ms`, `streaming`, `gru_window`, `isolated_windows`, `hidden_dim`, `vad`) in `ovos_ww_plugin_wakeforge/__init__.py`. URL models are cached under `${XDG_DATA_HOME}/wakeforge/`.
 
 ## Credits
 

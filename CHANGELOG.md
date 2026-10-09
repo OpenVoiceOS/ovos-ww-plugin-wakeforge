@@ -1,73 +1,148 @@
 # Changelog
 
-## [0.3.0a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.3.0a2) (2026-09-30)
+## [0.17.0a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.17.0a2) (2026-10-09)
 
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.3.0a1...0.3.0a2)
-
-**Merged pull requests:**
-
-- docs: laptop quickstart with a demo screenshot; fix: demo loads openWakeWord 0.5+ [\#11](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/11) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.3.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.3.0a1) (2026-09-30)
-
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.2.0a2...0.3.0a1)
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.17.0a1...0.17.0a2)
 
 **Merged pull requests:**
 
-- feat: hey mycroft models trained on human recordings and on synthetic speech [\#10](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/10) ([JarbasAl](https://github.com/JarbasAl))
+- test: recalibrated wake-up models carry their 20 h calibration [\#50](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/50) ([JarbasAl](https://github.com/JarbasAl))
 
-## [0.2.0a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.2.0a2) (2026-09-30)
+## [0.17.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.17.0a1) (2026-10-09)
 
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.2.0a1...0.2.0a2)
-
-## [0.2.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.2.0a1) (2026-09-30)
-
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.1.0a1...0.2.0a1)
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.16.0a1...0.17.0a1)
 
 **Merged pull requests:**
 
-- feat: better hey\_mycroft model, new wake\_up model, calibrated defaults from head metadata [\#8](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/8) ([JarbasAl](https://github.com/JarbasAl))
-- ci: drop two inputs build-tests.yml does not declare [\#6](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/6) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- feat: Spanish, German, Dutch and Italian wake-up models trained with in-language negatives [\#47](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/47) ([JarbasAl](https://github.com/JarbasAl))
 
-## [0.1.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.1.0a1) (2026-09-30)
+## [0.16.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.16.0a1) (2026-10-06)
 
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.0.4a1...0.1.0a1)
-
-**Merged pull requests:**
-
-- feat: WakeHuBERT models, bundled alexa and hey mycroft models, comparison demo [\#7](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/7) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.0.4a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.0.4a1) (2026-09-18)
-
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.0.3a1...0.0.4a1)
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.15.0a2...0.16.0a1)
 
 **Merged pull requests:**
 
-- Update dependency ovoscope to v1 [\#3](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/3) ([renovate[bot]](https://github.com/apps/renovate))
+- feat: wake-up models in Spanish, German, Dutch and Italian [\#45](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/45) ([JarbasAl](https://github.com/JarbasAl))
 
-## [0.0.3a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.0.3a1) (2026-09-18)
+## [0.15.0a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.15.0a2) (2026-10-06)
 
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.0.2a1...0.0.3a1)
-
-**Merged pull requests:**
-
-- Update dependency pytest to v9 [\#1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/1) ([renovate[bot]](https://github.com/apps/renovate))
-
-## [0.0.2a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.0.2a1) (2026-09-18)
-
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.0.1a2...0.0.2a1)
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.15.0a1...0.15.0a2)
 
 **Merged pull requests:**
 
-- fix: score audio in fixed blocks so decisions do not depend on the listener chunk size [\#5](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/5) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- perf: share featurizer sessions and window outputs between hotwords [\#43](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/43) ([JarbasAl](https://github.com/JarbasAl))
 
-## [0.0.1a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.0.1a2) (2026-08-01)
+## [0.15.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.15.0a1) (2026-10-05)
 
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/a184d891b6f0d8252e1725951775927af086aadd...0.0.1a2)
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.14.0a1...0.15.0a1)
 
 **Merged pull requests:**
 
-- docs: rewrite README in Simplified Technical English [\#4](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/4) ([JarbasAl](https://github.com/JarbasAl))
+- feat: calibrated int8 hey mycroft model [\#39](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/39) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.14.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.14.0a1) (2026-10-05)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.13.0a1...0.14.0a1)
+
+**Merged pull requests:**
+
+- feat: hey potato wake word; alexa model retrained [\#38](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/38) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.13.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.13.0a1) (2026-10-05)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.12.0a1...0.13.0a1)
+
+**Merged pull requests:**
+
+- feat: zero-shot wake word fires on two consecutive windows [\#36](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/36) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.12.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.12.0a1) (2026-10-05)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.11.0a1...0.12.0a1)
+
+**Merged pull requests:**
+
+- feat: hey ziggy and hey stemcom wake words [\#34](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/34) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.11.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.11.0a1) (2026-10-05)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.10.0a3...0.11.0a1)
+
+**Merged pull requests:**
+
+- feat: zero-shot wake words from IPA with WakePhoneHuBERT [\#32](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/32) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.10.0a3](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.10.0a3) (2026-10-04)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.10.0a2...0.10.0a3)
+
+**Merged pull requests:**
+
+- docs: shorter README [\#30](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/30) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.10.0a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.10.0a2) (2026-10-04)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.10.0a1...0.10.0a2)
+
+**Merged pull requests:**
+
+- docs: link the browser Spaces in the README [\#27](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/27) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.10.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.10.0a1) (2026-10-04)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.9.0a1...0.10.0a1)
+
+**Merged pull requests:**
+
+- feat: WakePhoneHuBERT featurizer [\#24](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/24) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.9.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.9.0a1) (2026-10-04)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.8.0a1...0.9.0a1)
+
+**Merged pull requests:**
+
+- feat: calibrated wakehubert models for eleven more words [\#25](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/25) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.8.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.8.0a1) (2026-10-04)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.7.0a1...0.8.0a1)
+
+**Merged pull requests:**
+
+- feat: calibrated int8 wake-word models named wakehubert\_\<word\> [\#22](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/22) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.7.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.7.0a1) (2026-10-02)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.6.0a1...0.7.0a1)
+
+**Merged pull requests:**
+
+- feat: jarvis ready model, and a stronger alexa model trained on synthetic speech only [\#19](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/19) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.6.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.6.0a1) (2026-10-01)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.5.0a1...0.6.0a1)
+
+**Merged pull requests:**
+
+- feat: computer and ok\_nabu ready models [\#16](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/16) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.5.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.5.0a1) (2026-10-01)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.4.0a1...0.5.0a1)
+
+**Merged pull requests:**
+
+- feat: hey\_mycroft\_synthetic trained on the full synthetic dataset [\#14](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/14) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.4.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.4.0a1) (2026-09-30)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.3.0...0.4.0a1)
+
+**Merged pull requests:**
+
+- feat: stronger synthetic-only hey\_mycroft\_synthetic model [\#12](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/12) ([JarbasAl](https://github.com/JarbasAl))
 
 
 

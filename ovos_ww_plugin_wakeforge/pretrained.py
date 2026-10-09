@@ -8,22 +8,19 @@ A model trained with ``ww_trainer-train --tier wakehubert`` (or
 ``--featurizer-type <name>``) runs on a featurizer that wakeforge downloads by
 name, such as ``wakehubert``. This module resolves the same names to the same
 Hub files, in the shared Hugging Face cache, and scores a stream with them.
-The default featurizer (``wakehubert``, ``wakehubert-int8``) ships inside the
-package and resolves without network.
 """
 from __future__ import annotations
 
 import json
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Dict, Optional
 
 import numpy as np
 import onnxruntime as ort
 from huggingface_hub import hf_hub_download
 
-from ovos_ww_plugin_wakeforge.inference import session_options
+from ovos_ww_plugin_wakeforge.inference import featurize, session_options, shared_session
 
 logger = logging.getLogger(__name__)
 
@@ -77,10 +74,13 @@ _REPOS = {
 }
 
 
+_REVISIONS = {"wakehubert-tiny": "e30726f3a1c28bb5dffadf101fe26c97e0e3c3e1"}
+
+
 def _entry(repo: str, variant: str, frames: Optional[int]) -> PretrainedFeaturizer:
     licence, description, _, _ = _REPOS[repo]
     return PretrainedFeaturizer(f"TigreGotico/{repo}", variant, licence, description,
-                                None if frames is None else frames * 320)
+                                None if frames is None else frames * 320, _REVISIONS.get(repo))
 
 
 PRETRAINED_FEATURIZERS: Dict[str, PretrainedFeaturizer] = {}
@@ -90,24 +90,24 @@ for _repo, (_, _, _fp32, _int8) in _REPOS.items():
 PRETRAINED_FEATURIZERS["wakehubert"] = PRETRAINED_FEATURIZERS["wakehubert-tiny"]
 PRETRAINED_FEATURIZERS["wakehubert-int8"] = PRETRAINED_FEATURIZERS["wakehubert-tiny-int8"]
 
+# WakePhoneHuBERT publishes only the joined 521-wide features output (hubert 0-128,
+# vad 128-129, ipa 129-521); the receptive field is 131 frames of 320 samples.
+PRETRAINED_FEATURIZERS["wakephonehubert-int8"] = PretrainedFeaturizer(
+    "TigreGotico/wakephonehubert", "features_int8", _APACHE,
+    "WakeHuBERT-tiny trunk with active-speaker VAD and IPA heads, 521 features",
+    41920, "343b2497cb0ef0310d163eb53e3f0f817260dbf7")
+
 
 def is_non_commercial(licence: str) -> bool:
     """True for Creative Commons NonCommercial licences (``*-nc-*``)."""
     return "-nc" in licence.lower()
 
 
-# Featurizers shipped inside this package, by Hub repository, with the revision
-# they were copied from. Resolving one of them needs no network.
-BUNDLED_REVISIONS = {"TigreGotico/wakehubert-tiny": "e30726f3a1c28bb5dffadf101fe26c97e0e3c3e1"}
-_BUNDLED_DIR = Path(__file__).parent / "featurizers"
-
-
 def resolve_pretrained(name: str, revision: Optional[str] = None) -> tuple[str, dict]:
     """Return ``(onnx_path, config)`` for a pretrained featurizer.
 
-    A featurizer bundled with this package is read from the package when no
-    other revision is pinned; any other is downloaded into the shared Hugging
-    Face cache.
+    The files are downloaded into the shared Hugging Face cache at the
+    featurizer's pinned revision, or at ``revision`` when given.
     """
     if name not in PRETRAINED_FEATURIZERS:
         raise ValueError(
@@ -116,11 +116,6 @@ def resolve_pretrained(name: str, revision: Optional[str] = None) -> tuple[str, 
         )
     entry = PRETRAINED_FEATURIZERS[name]
     rev = revision or entry.revision
-    bundled = BUNDLED_REVISIONS.get(entry.repo_id)
-    if bundled and rev in (None, bundled):
-        folder = _BUNDLED_DIR / entry.repo_id.split("/", 1)[1]
-        config = json.loads((folder / "config.json").read_text(encoding="utf-8"))
-        return str(folder / config["files"][entry.variant]), config
     config_path = hf_hub_download(entry.repo_id, "config.json", revision=rev)
     with open(config_path, encoding="utf-8") as f:
         config = json.load(f)
@@ -202,10 +197,8 @@ class OnnxWindowedWakeWord:
                  hop_samples: int, context_samples: int, isolated: bool = False,
                  agc: bool = False, threads: int = 1) -> None:
         providers, so = ["CPUExecutionProvider"], session_options(threads)
-        self.ext = ort.InferenceSession(featurizer_path, so, providers=providers)
+        self.ext = shared_session(featurizer_path, threads)
         self.head = ort.InferenceSession(head_path, so, providers=providers)
-        self._ext_in = self.ext.get_inputs()[0].name
-        self._ext_out = self.ext.get_outputs()[0].name
         self._head_in = self.head.get_inputs()[0].name
         self._head_out = self.head.get_outputs()[0].name
         self.window = window
@@ -241,7 +234,7 @@ class OnnxWindowedWakeWord:
         self._feats: Optional[np.ndarray] = None
 
     def _featurize(self, audio: np.ndarray) -> np.ndarray:
-        return self.ext.run([self._ext_out], {self._ext_in: audio[np.newaxis, :]})[0]
+        return featurize(self.ext, audio[np.newaxis, :])
 
     def push(self, audio_chunk: np.ndarray) -> float:
         """Feed one chunk (a multiple of the hop) and return the head's probability."""

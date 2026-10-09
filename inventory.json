@@ -1,0 +1,31 @@
+{
+  "huggingface": [
+    {
+      "id": "OpenVoiceOS/wakehubert-wakewords",
+      "type": "model",
+      "access": "read",
+      "revision": "4919c6c2055a1280d2870919ff89794408c79f80",
+      "license": "apache-2.0",
+      "files": ["models.json", "models/wakehubert_<word>.onnx"],
+      "use": "wake-word heads, downloaded on first use into the Hugging Face cache and checked against the sha256 in models.json"
+    },
+    {
+      "id": "TigreGotico/wakehubert-tiny",
+      "type": "model",
+      "access": "read",
+      "revision": "e30726f3a1c28bb5dffadf101fe26c97e0e3c3e1",
+      "license": "apache-2.0",
+      "files": ["config.json", "wakehubert.onnx", "wakehubert_int8.onnx"],
+      "use": "WakeHuBERT featurizer the heads run on, downloaded on first use into the Hugging Face cache"
+    },
+    {
+      "id": "TigreGotico/wakephonehubert",
+      "type": "model",
+      "access": "read",
+      "revision": "343b2497cb0ef0310d163eb53e3f0f817260dbf7",
+      "license": "apache-2.0",
+      "files": ["config.json", "wakephonehubert_features_int8.onnx"],
+      "use": "WakePhoneHuBERT featurizer the wakephonehubert heads and the zero-shot engine run on, downloaded on first use into the Hugging Face cache; the zero-shot engine checks the ONNX sha256 and reads the phone table from config.json"
+    }
+  ]
+}

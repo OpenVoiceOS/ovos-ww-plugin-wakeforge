@@ -17,7 +17,9 @@ from ovos_ww_plugin_wakeforge.pretrained import (
 
 
 def _fields(entry):
-    return entry.repo_id, entry.variant, entry.license, entry.context_samples, entry.revision
+    # The plugin pins the revision it downloads at run time because it ships no featurizer
+    # files; the training side resolves the repository head.
+    return entry.repo_id, entry.variant, entry.license, entry.context_samples
 
 
 def test_registry_matches_wakeforge():
