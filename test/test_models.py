@@ -136,6 +136,20 @@ def test_listed_heads_io_and_metadata(word):
     assert logit.shape == (1,)
 
 
+# Heads calibrated on a 20 h stream featurized as the plugin featurizes audio,
+# where 1 FA/h is read without extrapolating the tail; their shipped defaults.
+_RECALIBRATED = {"wakehubert_aufwachen": 0.57, "wakehubert_despierta": 0.51,
+                 "wakehubert_sveglia": 0.47, "wakehubert_wakker_worden": 0.56}
+
+
+@pytest.mark.parametrize("word", sorted(_RECALIBRATED))
+def test_recalibrated_heads_carry_their_unextrapolated_calibration(word):
+    assert ENTRIES[word]["default_threshold"] == _RECALIBRATED[word]
+    meta = ort.InferenceSession(download_listed_model(ENTRIES[word])).get_modelmeta().custom_metadata_map
+    assert meta["calib_extrapolated"] == "False"
+    assert float(meta["calib_hours"]) >= 20.0
+    assert abs(float(meta["default_threshold"]) - _RECALIBRATED[word]) <= 5e-4
+
 def test_featurizer_resolves_from_the_hub_at_its_pinned_revision():
     for name, file in (("wakehubert", "wakehubert.onnx"), ("wakehubert-int8", "wakehubert_int8.onnx")):
         path, config = resolve_pretrained(name)
