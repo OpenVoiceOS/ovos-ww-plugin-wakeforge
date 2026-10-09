@@ -137,6 +137,13 @@ class WakeForgeHotwordPlugin(HotWordEngine):
             depends on instead.
         agc (bool): with isolated windows, level each window (peak to 0.5,
             gain 0.25-4x), default False.
+        streaming_features (bool): with a pretrained featurizer and a batch
+            head, stream the featurizer: its state is carried between blocks
+            and only each block's new frames are computed, instead of
+            featurizing the whole window every block; the head still scores
+            the last ``gru_window`` frames. Default False. Hotwords fed the same
+            audio share one featurizer run per chunk; a hotword reset at
+            another moment streams on its own. Not combinable with ``agc``.
         hidden_dim (int): GRU hidden size for the streaming head, default 128.
         onnx_threads (int): intra-op threads per ONNX session, default 1.
     """
@@ -230,6 +237,7 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         self._buffer = np.zeros(0, dtype=np.float32)
         LOG.info(f"wakeforge wake word '{self.key_phrase}' loaded "
                  f"(featurizer={pretrained or 'onnx'}, streaming={self.streaming}, "
+                 f"streamed_features={getattr(self.engine, 'stream', None) is not None}, "
                  f"threshold={self.threshold})")
 
     @staticmethod
@@ -278,7 +286,8 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         return OnnxWindowedWakeWord.from_extractor(
             self.featurizer, model, window,
             isolated=bool(self.config.get("isolated_windows", True)),
-            agc=bool(self.config.get("agc", False)), threads=self.threads)
+            agc=bool(self.config.get("agc", False)), threads=self.threads,
+            streamed=bool(self.config.get("streaming_features", False)))
 
     def _resolve(self, model):
         """Resolve a model reference to a local file path, downloading URLs."""
