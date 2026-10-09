@@ -19,6 +19,15 @@
       "use": "WakeHuBERT featurizer the heads run on, downloaded on first use into the Hugging Face cache"
     },
     {
+      "id": "TigreGotico/wakehubert-tiny",
+      "type": "model",
+      "access": "read",
+      "revision": "343b26ea8881b5a01447a1659555941b25220d22",
+      "license": "apache-2.0",
+      "files": ["wakehubert_stream.onnx", "wakehubert_int8_stream.onnx"],
+      "use": "stateful streaming graphs of the WakeHuBERT featurizer, for streamed features; the plugin checks that the graph was made from the featurizer the head runs on"
+    },
+    {
       "id": "TigreGotico/wakephonehubert",
       "type": "model",
       "access": "read",
