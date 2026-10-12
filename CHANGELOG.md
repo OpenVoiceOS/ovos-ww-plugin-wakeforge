@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.18.0a1](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.18.0a1) (2026-10-12)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.17.0a2...0.18.0a1)
+
+**Merged pull requests:**
+
+- feat: streaming wake-word models on a streamed featurizer [\#48](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/pull/48) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.17.0a2](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/tree/0.17.0a2) (2026-10-09)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-ww-plugin-wakeforge/compare/0.17.0a1...0.17.0a2)
