@@ -11,6 +11,7 @@ Hub files, in the shared Hugging Face cache, and scores a stream with them.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from dataclasses import dataclass
@@ -19,8 +20,10 @@ from typing import Dict, Optional
 import numpy as np
 import onnxruntime as ort
 from huggingface_hub import hf_hub_download
+from huggingface_hub.utils import EntryNotFoundError, LocalEntryNotFoundError
 
-from ovos_ww_plugin_wakeforge.inference import featurize, session_options, shared_session
+from ovos_ww_plugin_wakeforge.inference import (StreamingFeaturizer, featurize, session_options,
+                                                 shared_session)
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +101,46 @@ PRETRAINED_FEATURIZERS["wakephonehubert-int8"] = PretrainedFeaturizer(
     41920, "343b2497cb0ef0310d163eb53e3f0f817260dbf7")
 
 
+# Stateful streaming graphs of published featurizers (wakeforge ``stream_trunk.py streamify``): the source file's
+# name with ``_stream`` before the extension, unless the repository config lists ``<variant>_stream``, at the
+# revision that holds it.
+_STREAM_REVISIONS: Dict[str, str] = {"wakehubert-tiny": "343b26ea8881b5a01447a1659555941b25220d22"}
+
+
+def resolve_streaming(name: str, config: dict) -> str:
+    """Path of the stateful streaming graph of a pretrained featurizer.
+
+    Raises:
+        ValueError: If the featurizer's repository publishes no streaming graph at the revision that holds it.
+    """
+    entry = PRETRAINED_FEATURIZERS[name]
+    source = config["files"][entry.variant]
+    filename = config["files"].get(f"{entry.variant}_stream") or source.rsplit(".", 1)[0] + "_stream.onnx"
+    revision = _STREAM_REVISIONS.get(entry.repo_id.split("/")[-1]) or entry.revision
+    try:
+        return hf_hub_download(entry.repo_id, filename, revision=revision)
+    except LocalEntryNotFoundError:
+        raise
+    except EntryNotFoundError as e:
+        raise ValueError(f"pretrained featurizer '{name}' has no streaming graph: {entry.repo_id} at {revision} "
+                         f"holds no {filename}. Set 'streaming_features: false' to featurize each window on "
+                         "its own.") from e
+
+
+def check_stream_source(session: ort.InferenceSession, source_path: str) -> None:
+    """Refuse a streaming graph that was not rewritten from ``source_path``, the featurizer the head runs on.
+
+    Raises:
+        ValueError: If the graph's ``source_sha256`` metadata is not the sha256 of ``source_path``.
+    """
+    recorded = session.get_modelmeta().custom_metadata_map.get("source_sha256")
+    with open(source_path, "rb") as f:
+        digest = hashlib.sha256(f.read()).hexdigest()
+    if recorded != digest:
+        raise ValueError(f"the streaming graph was not made from the featurizer {source_path} the head runs on "
+                         f"(source sha256 {recorded}, featurizer {digest})")
+
+
 def is_non_commercial(licence: str) -> bool:
     """True for Creative Commons NonCommercial licences (``*-nc-*``)."""
     return "-nc" in licence.lower()
@@ -139,6 +182,7 @@ class PretrainedOnnxFeaturizer:
     context_samples: int
     streaming: bool
     license: str = ""
+    config: Optional[dict] = None
 
     @classmethod
     def from_pretrained(cls, name: str, revision: Optional[str] = None,
@@ -164,7 +208,12 @@ class PretrainedOnnxFeaturizer:
             context_samples=context or 0,
             streaming=bool(config.get("streaming", False)) and context is not None,
             license=licence,
+            config=config,
         )
+
+    def streaming_path(self) -> str:
+        """Download the stateful streaming graph of this featurizer (see :func:`resolve_streaming`)."""
+        return resolve_streaming(self.name, self.config or {})
 
 
 class OnnxWindowedWakeWord:
@@ -179,6 +228,11 @@ class OnnxWindowedWakeWord:
     - with context: each chunk is featurized together with ``context_samples``
       of past audio, so its frames equal the frames of the same audio
       featurized offline, and the head scores the last ``window`` of them.
+    - streamed: a stateful streaming graph of the featurizer carries every
+      layer's past between chunks and computes only the new frames, which
+      equal those of the whole stream featurized at once; the head scores
+      the last ``window`` of them. A stream starts after ``window`` frames of
+      silence, as an isolated window starts zero-filled.
 
     Args:
         featurizer_path: Feature extractor ONNX, ``[1, samples] -> [1, frames, F]``.
@@ -191,13 +245,21 @@ class OnnxWindowedWakeWord:
             limited to 0.25-4x, so a quiet or hot microphone scores like a
             normal one and silence stays quiet.
         threads: Intra-op threads per ONNX session.
+        stream_path: Stateful streaming graph of the featurizer; when given,
+            frames are streamed and ``isolated`` and ``agc`` do not apply.
     """
 
     def __init__(self, featurizer_path: str, head_path: str, window: int,
                  hop_samples: int, context_samples: int, isolated: bool = False,
-                 agc: bool = False, threads: int = 1) -> None:
+                 agc: bool = False, threads: int = 1, stream_path: Optional[str] = None) -> None:
+        if stream_path and (isolated or agc):
+            raise ValueError("streamed features replace isolated windows; agc levels an isolated window "
+                             "and has no streamed equivalent")
         providers, so = ["CPUExecutionProvider"], session_options(threads)
-        self.ext = shared_session(featurizer_path, threads)
+        self.stream = StreamingFeaturizer(stream_path, hop_samples, threads) if stream_path else None
+        if self.stream:
+            check_stream_source(self.stream.session, featurizer_path)
+        self.ext = None if self.stream else shared_session(featurizer_path, threads)
         self.head = ort.InferenceSession(head_path, so, providers=providers)
         self._head_in = self.head.get_inputs()[0].name
         self._head_out = self.head.get_outputs()[0].name
@@ -210,7 +272,7 @@ class OnnxWindowedWakeWord:
 
     @classmethod
     def from_extractor(cls, extractor, head_path: str, window: int, isolated: bool = False,
-                       agc: bool = False, threads: int = 1) -> "OnnxWindowedWakeWord":
+                       agc: bool = False, threads: int = 1, streamed: bool = False) -> "OnnxWindowedWakeWord":
         """Build a scorer for a :class:`PretrainedOnnxFeaturizer`.
 
         Raises:
@@ -225,13 +287,17 @@ class OnnxWindowedWakeWord:
         return cls(extractor.model_path, head_path, window=window,
                    hop_samples=extractor.hop_samples,
                    context_samples=extractor.context_samples,
-                   isolated=isolated, agc=agc, threads=threads)
+                   isolated=isolated and not streamed, agc=agc, threads=threads,
+                   stream_path=extractor.streaming_path() if streamed else None)
 
     def reset(self) -> None:
         """Clear the carried audio and feature window."""
         self._ctx = np.zeros(0, dtype=np.float32)
         self._audio = np.zeros(self.window * self.hop, dtype=np.float32)
         self._feats: Optional[np.ndarray] = None
+        if self.stream:
+            self.stream.reset()
+            self._feats = self.stream.push(self._audio)
 
     def _featurize(self, audio: np.ndarray) -> np.ndarray:
         return featurize(self.ext, audio[np.newaxis, :])
@@ -239,7 +305,9 @@ class OnnxWindowedWakeWord:
     def push(self, audio_chunk: np.ndarray) -> float:
         """Feed one chunk (a multiple of the hop) and return the head's probability."""
         chunk = audio_chunk.astype(np.float32)
-        if self.isolated:
+        if self.stream:
+            self._feats = np.concatenate([self._feats, self.stream.push(chunk)], axis=1)[:, -self.window:, :]
+        elif self.isolated:
             self._audio = np.concatenate([self._audio, chunk])[-self.window * self.hop:]
             audio = self._audio
             if self.agc:

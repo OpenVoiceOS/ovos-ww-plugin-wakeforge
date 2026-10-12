@@ -35,8 +35,10 @@ _FEATURIZER_META_KEYS = ("pretrained_featurizer", "featurizer")
 # revision. Each head is a recurrent classifier on WakeHuBERT features with its
 # calibration folded in, so it outputs the probability that the window holds
 # the wake word; its ``pretrained_featurizer`` metadata names the featurizer.
+# A ``_streaming`` model was trained on streamed features, and its
+# ``featurizer_features`` metadata says ``streamed``.
 MODELS_REPO = "OpenVoiceOS/wakehubert-wakewords"
-MODELS_REVISION = "4919c6c2055a1280d2870919ff89794408c79f80"
+MODELS_REVISION = "cc170b403add2b673345722130ea7e547b4c66c1"
 
 
 def _download_failed(name, revision, error):
@@ -92,7 +94,8 @@ class WakeForgeHotwordPlugin(HotWordEngine):
     shared cache. Ready models are downloaded from the Hub repository
     ``OpenVoiceOS/wakehubert-wakewords`` the same way, named
     ``wakehubert_<word>``: ``"model": "wakehubert_jarvis"`` and the other names
-    ``model_names()`` returns.
+    ``model_names()`` returns. A ``wakehubert_<word>_streaming`` model scores
+    streamed features (see ``streaming_features``).
 
     A head loaded by path is calibrated the same way when its own ONNX
     metadata carries a ``default_threshold`` (a Platt-calibrated head, as
@@ -137,6 +140,15 @@ class WakeForgeHotwordPlugin(HotWordEngine):
             depends on instead.
         agc (bool): with isolated windows, level each window (peak to 0.5,
             gain 0.25-4x), default False.
+        streaming_features (bool): with a pretrained featurizer and a batch
+            head, stream the featurizer: its state is carried between blocks
+            and only each block's new frames are computed, instead of
+            featurizing the whole window every block; the head still scores
+            the last ``gru_window`` frames. Default True for a head whose
+            ``featurizer_features`` metadata is ``streamed``, else False.
+            Hotwords fed the same audio share one featurizer run per chunk; a
+            hotword reset at another moment streams on its own. Not
+            combinable with ``agc``.
         hidden_dim (int): GRU hidden size for the streaming head, default 128.
         onnx_threads (int): intra-op threads per ONNX session, default 1.
     """
@@ -213,6 +225,9 @@ class WakeForgeHotwordPlugin(HotWordEngine):
             hop = self.featurizer.hop_samples
             self.block = -(-self.block // hop) * hop
         else:
+            if self.config.get("streaming_features"):
+                LOG.warning("wakeforge plugin: 'streaming_features' applies only to a pretrained featurizer; "
+                            f"ignored for the featurizer {featurizer}.")
             featurizer = self._resolve(featurizer)
             vad = self.config.get("vad")
             vad = self._resolve(vad) if vad else None
@@ -230,6 +245,7 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         self._buffer = np.zeros(0, dtype=np.float32)
         LOG.info(f"wakeforge wake word '{self.key_phrase}' loaded "
                  f"(featurizer={pretrained or 'onnx'}, streaming={self.streaming}, "
+                 f"streamed_features={getattr(self.engine, 'stream', None) is not None}, "
                  f"threshold={self.threshold})")
 
     @staticmethod
@@ -264,6 +280,9 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         self.featurizer = PretrainedOnnxFeaturizer.from_pretrained(name, revision)
         inputs = {i.name: i.shape for i in head.get_inputs()}
         if "out_window" in inputs:
+            if self.config.get("streaming_features"):
+                LOG.warning(f"wakeforge plugin: {model} is a stateful streaming head; 'streaming_features' "
+                            "applies only to a batch head and is ignored.")
             self.streaming = True
             _, window, hidden = inputs["out_window"]
             if not isinstance(window, int):
@@ -272,13 +291,18 @@ class WakeForgeHotwordPlugin(HotWordEngine):
                 hidden = int(self.config.get("hidden_dim", 128))
             return OnnxStreamingWakeWord.from_extractor(
                 self.featurizer, model, window=window, hidden_dim=hidden, threads=self.threads)
-        self.streaming = False
+        trained_streamed = meta.get("featurizer_features") == "streamed"
         window = int(self.config.get("gru_window") or meta.get("window_frames")
                      or round(1.5 * self.featurizer.frame_rate_hz))
+        self.streaming = False
+        streamed = bool(self.config.get("streaming_features", trained_streamed))
+        if trained_streamed and not streamed:
+            LOG.warning(f"wakeforge model {model} was trained on streamed features; "
+                        "'streaming_features: false' scores it on other features.")
         return OnnxWindowedWakeWord.from_extractor(
             self.featurizer, model, window,
             isolated=bool(self.config.get("isolated_windows", True)),
-            agc=bool(self.config.get("agc", False)), threads=self.threads)
+            agc=bool(self.config.get("agc", False)), threads=self.threads, streamed=streamed)
 
     def _resolve(self, model):
         """Resolve a model reference to a local file path, downloading URLs."""

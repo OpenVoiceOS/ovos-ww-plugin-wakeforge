@@ -48,6 +48,18 @@ Add this to `mycroft.conf`:
 
 Each ready model is named `wakehubert_<word>`. The model card lists all words, thresholds, test results and training data: https://huggingface.co/OpenVoiceOS/wakehubert-wakewords.
 
+## Streaming models
+
+A model named `wakehubert_<word>_streaming` was trained on streamed features. The plugin runs the featurizer as a stateful graph. The graph carries each layer's past between 80 ms blocks and computes only the new frames, instead of featurizing the last 1.5 s again on every block. Streaming models exist for `alexa`, `hey_jarvis` and `hey_mycroft`.
+
+```json
+"hotwords": {
+  "hey_mycroft": {"module": "ovos-ww-plugin-wakeforge", "model": "wakehubert_hey_mycroft_streaming", "listen": true}
+}
+```
+
+The model's metadata selects streamed features, so `model` is the only key you need. The model card lists their results.
+
 ## Threshold
 
 Calibrated models make `threshold` a sensitivity setting. A higher value gives fewer false activations and fewer detections. A lower value gives more of both. Each model has its own default threshold. Set `"threshold"` in the hotword config to change it.
@@ -96,7 +108,8 @@ Set `model` to the classifier ONNX that wakeforge exported. Set `featurizer` to 
 | `featurizer` | none | feature-extractor ONNX (path or URL), or a pretrained name such as `wakehubert`; optional when the model names one |
 | `threshold` | `0.5` | detection threshold; a ready model or calibrated head uses its own default |
 | `debounce_sec` | `1.0` | minimum seconds between detections (`2.0` for a calibrated head) |
-| `agc` | `false` | level each audio window before scoring; helps when the microphone gain is far too high or low |
+| `agc` | `false` | level each audio window before scoring; helps when the microphone gain is far too high or low; not available with streamed features |
+| `streaming_features` | from the model | stream the featurizer instead of featurizing each window on its own; on for a model trained on streamed features |
 | `models_revision` | pinned | Hugging Face revision of the ready-model repository |
 | `featurizer_revision` | pinned | Hugging Face revision of a pretrained featurizer |
 | `onnx_threads` | `1` | threads per ONNX session |

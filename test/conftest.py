@@ -6,6 +6,7 @@ stream reproduces offline frames only when enough past audio is carried with
 each chunk. The Hub download is replaced by a function serving these files, so
 no test touches the network.
 """
+import hashlib
 import json
 from dataclasses import dataclass, field
 
@@ -36,8 +37,12 @@ def _const(name, value, dtype=np.int64):
     return numpy_helper.from_array(np.asarray(value, dtype=dtype), name=name)
 
 
-def make_featurizer(path, seed=0):
-    """waveform [B, N] -> features [B, N // HOP, FEAT_DIM], causal over K frames."""
+def make_featurizer(path, seed=0, stateful=False, state_offset=0):
+    """waveform [B, N] -> features [B, N // HOP, FEAT_DIM], causal over K frames.
+
+    ``stateful`` builds its streaming graph instead, as wakeforge's ``streamify`` rewrites a published featurizer:
+    the left pad becomes a ``state`` input [1, 2, K - 1] in front of the frames, and ``state_out`` is the last K - 1
+    frames; ``state_offset`` shifts that slice back by as many frames, a broken carry for the tests."""
     rng = np.random.default_rng(seed)
     inits = [
         _const("zero", 0), _const("one", 1), _const("hop", HOP), _const("hop1", [HOP]),
@@ -63,19 +68,24 @@ def make_featurizer(path, seed=0):
         helper.make_node("ReduceMean", ["frames"], ["dc"], axes=[2], keepdims=1),
         helper.make_node("Concat", ["energy", "dc"], ["stats"], axis=2),     # [B, n, 2]
         helper.make_node("Transpose", ["stats"], ["stats_t"], perm=[0, 2, 1]),
-        helper.make_node("Pad", ["stats_t", "pads"], ["padded"]),            # causal left pad
+        *([helper.make_node("Concat", ["state", "stats_t"], ["padded"], axis=2),
+           helper.make_node("Slice", ["padded", "s_start", "s_end", "ax2"], ["state_out"])] if stateful else
+          [helper.make_node("Pad", ["stats_t", "pads"], ["padded"])]),     # causal left pad
         helper.make_node("Conv", ["padded", "W", "bias"], ["conv"]),         # [B, D, n]
         helper.make_node("Transpose", ["conv"], ["conv_t"], perm=[0, 2, 1]),
         helper.make_node("Tanh", ["conv_t"], ["features"]),
     ]
-    graph = helper.make_graph(
-        nodes, "standin_wakehubert",
-        inputs=[helper.make_tensor_value_info("waveform", TensorProto.FLOAT, ["batch", "samples"])],
-        outputs=[helper.make_tensor_value_info("features", TensorProto.FLOAT,
-                                               ["batch", "frames", FEAT_DIM])],
-        initializer=inits,
-    )
-    _save(graph, path)
+    inputs = [helper.make_tensor_value_info("waveform", TensorProto.FLOAT, ["batch", "samples"])]
+    outputs = [helper.make_tensor_value_info("features", TensorProto.FLOAT, ["batch", "frames", FEAT_DIM])]
+    metadata = None
+    if stateful:
+        inits += [_const("s_start", [-(K - 1) - state_offset]), _const("ax2", [2]),
+                  _const("s_end", [-state_offset if state_offset else np.iinfo(np.int64).max])]
+        inputs.append(helper.make_tensor_value_info("state", TensorProto.FLOAT, [1, 2, K - 1]))
+        outputs.append(helper.make_tensor_value_info("state_out", TensorProto.FLOAT, [1, 2, K - 1]))
+        metadata = {"source_sha256": stateful}
+    graph = helper.make_graph(nodes, "standin_wakehubert", inputs=inputs, outputs=outputs, initializer=inits)
+    _save(graph, path, metadata)
 
 
 def make_batch_head(path, metadata=None, seed=1):
@@ -147,6 +157,7 @@ class StandinHub:
     featurizer: str
     config: dict
     tmp: object
+    stream: str = ""
     calls: list = field(default_factory=list)
     hop: int = HOP
     context: int = CONTEXT
@@ -169,6 +180,8 @@ class StandinHub:
             path = self.tmp / f"config-{len(self.calls)}.json"
             path.write_text(json.dumps(self.config))
             return str(path)
+        if filename.endswith("_stream.onnx"):
+            return self.stream
         return self.featurizer
 
 
@@ -179,6 +192,8 @@ def standin_hub(tmp_path, monkeypatch):
 
     feat = tmp_path / "wakehubert.onnx"
     make_featurizer(str(feat))
+    stream = tmp_path / "wakehubert_stream.onnx"
+    make_featurizer(str(stream), stateful=hashlib.sha256(feat.read_bytes()).hexdigest())
     config = {
         "feature_dim": FEAT_DIM,
         "output": {"hop_samples": HOP, "frame_rate_hz": 16000 / HOP},
@@ -187,7 +202,7 @@ def standin_hub(tmp_path, monkeypatch):
         "receptive_field_samples": CONTEXT,
         "license": "apache-2.0",
     }
-    hub = StandinHub(str(feat), config, tmp_path)
+    hub = StandinHub(str(feat), config, tmp_path, stream=str(stream))
     monkeypatch.setattr(pretrained, "hf_hub_download", hub.download)
     return hub
 

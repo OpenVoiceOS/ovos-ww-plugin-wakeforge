@@ -62,9 +62,14 @@ _METADATA = {
     "wakehubert_wake_up": {"wake_word": "wake up", "training_data_has": _SYNTHETIC_ONLY},
     "wakehubert_wakker_worden": {"wake_word": "wakker worden", "training_data_has": _SYNTHETIC_ONLY},
 }
+# Heads trained on streamed features, which score the last 75 streamed frames.
+_STREAMED = "streamed WakeHuBERT-tiny int8 features"
+for _word in ("alexa", "hey jarvis", "hey mycroft"):
+    _METADATA[f"wakehubert_{_word.replace(' ', '_')}_streaming"] = {"wake_word": _word, "training_data_has": _STREAMED}
+STREAMING = sorted(w for w in _METADATA if w.endswith("_streaming"))
 # Heads exported with their calibration folded into the graph, on the int8
 # featurizer: 0.5 is the probability the calibration targets.
-CALIBRATED = sorted(w for w, m in _METADATA.items() if m["training_data_has"] == _SYNTHETIC_ONLY)
+CALIBRATED = sorted(w for w, m in _METADATA.items() if m["training_data_has"] in (_SYNTHETIC_ONLY, _STREAMED))
 
 # Clips a head fires on although they hold another word; real behaviour of
 # similar-sounding words, documented in the README.
@@ -88,7 +93,15 @@ def _featurizer(word):
 
 
 def _clip(word):
-    return word.removeprefix("wakehubert_")
+    return word.removeprefix("wakehubert_").removesuffix("_streaming")
+
+
+def _assert_engine(eng, word):
+    """A streaming model streams its features; the others score isolated windows."""
+    if word in STREAMING:
+        assert eng.engine.stream is not None and not eng.engine.isolated and eng.engine.window == 75
+    else:
+        assert eng.engine.isolated and eng.engine.window == 75
 
 
 def _pcm(path, lead=2.0, tail=1.0):
@@ -125,6 +138,8 @@ def test_listed_heads_io_and_metadata(word):
     meta = sess.get_modelmeta().custom_metadata_map
     assert meta["wake_word"] == expected["wake_word"]
     assert meta["pretrained_featurizer"] == _featurizer(word) == ENTRIES[word]["featurizer"]
+    assert (meta.get("featurizer_features") == "streamed") == (word in STREAMING)
+    assert (ENTRIES[word].get("features") == "streamed") == (word in STREAMING)
     assert meta["window_frames"] == "75"
     assert "Apache-2.0" in meta["license"]
     if "default_threshold" in meta:
@@ -169,7 +184,7 @@ def test_listed_name_downloads_and_loads_with_the_entry_default_threshold(word):
     assert (eng.smoother.method, eng.smoother.window_size, eng.smoother.patience) == ("max", 1, 1)
     assert eng.debounce_sec == 2.0
     assert eng.featurizer.name == entry["featurizer"]
-    assert eng.engine.isolated and eng.engine.window == 75
+    _assert_engine(eng, word)
     want = ort.InferenceSession(download_listed_model(entry)).get_modelmeta().custom_metadata_map
     assert eng.engine.head.get_modelmeta().custom_metadata_map == want
 
@@ -285,7 +300,7 @@ def test_listed_model_detects_its_wake_word(word):
     assert (eng.smoother.method, eng.smoother.window_size, eng.smoother.patience) == ("max", 1, 1)
     assert eng.debounce_sec == 2.0
     assert eng.featurizer.name == _featurizer(word)
-    assert eng.engine.isolated and eng.engine.window == 75
+    _assert_engine(eng, word)
     pcm = _pcm(CLIPS / f"{_clip(word)}.wav")
     scores, fired = _run(eng, pcm)
     assert len(fired) == 1, (fired, max(s for s in scores if s is not None))
@@ -296,6 +311,7 @@ def test_listed_model_detects_its_wake_word(word):
 def test_listed_model_ignores_the_other_words(word):
     eng = WakeForgeHotwordPlugin(word, {"model": word})
     others = {_clip(w) for w in ENTRIES} - {_clip(word)} - _CONFUSED_WITH.get(_clip(word), set())
+    assert others
     for other in sorted(others):
         scores, fired = _run(eng, _pcm(CLIPS / f"{other}.wav"))
         assert fired == [], (word, other, max(scores))
@@ -331,3 +347,4 @@ def test_calibrated_heads_run_on_the_int8_featurizer_at_their_metadata_trigger(w
     assert eng.threshold == ENTRIES[word]["default_threshold"]
     assert abs(eng.threshold - float(meta["default_threshold"])) <= 5e-4
     assert Path(eng.featurizer.model_path).name == "wakehubert_int8.onnx"
+
