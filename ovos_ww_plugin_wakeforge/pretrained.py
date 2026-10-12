@@ -8,22 +8,22 @@ A model trained with ``ww_trainer-train --tier wakehubert`` (or
 ``--featurizer-type <name>``) runs on a featurizer that wakeforge downloads by
 name, such as ``wakehubert``. This module resolves the same names to the same
 Hub files, in the shared Hugging Face cache, and scores a stream with them.
-The default featurizer (``wakehubert``, ``wakehubert-int8``) ships inside the
-package and resolves without network.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Dict, Optional
 
 import numpy as np
 import onnxruntime as ort
 from huggingface_hub import hf_hub_download
+from huggingface_hub.utils import EntryNotFoundError, LocalEntryNotFoundError
 
-from ovos_ww_plugin_wakeforge.inference import session_options
+from ovos_ww_plugin_wakeforge.inference import (StreamingFeaturizer, featurize, session_options,
+                                                 shared_session)
 
 logger = logging.getLogger(__name__)
 
@@ -77,10 +77,13 @@ _REPOS = {
 }
 
 
+_REVISIONS = {"wakehubert-tiny": "e30726f3a1c28bb5dffadf101fe26c97e0e3c3e1"}
+
+
 def _entry(repo: str, variant: str, frames: Optional[int]) -> PretrainedFeaturizer:
     licence, description, _, _ = _REPOS[repo]
     return PretrainedFeaturizer(f"TigreGotico/{repo}", variant, licence, description,
-                                None if frames is None else frames * 320)
+                                None if frames is None else frames * 320, _REVISIONS.get(repo))
 
 
 PRETRAINED_FEATURIZERS: Dict[str, PretrainedFeaturizer] = {}
@@ -90,24 +93,64 @@ for _repo, (_, _, _fp32, _int8) in _REPOS.items():
 PRETRAINED_FEATURIZERS["wakehubert"] = PRETRAINED_FEATURIZERS["wakehubert-tiny"]
 PRETRAINED_FEATURIZERS["wakehubert-int8"] = PRETRAINED_FEATURIZERS["wakehubert-tiny-int8"]
 
+# WakePhoneHuBERT publishes only the joined 521-wide features output (hubert 0-128,
+# vad 128-129, ipa 129-521); the receptive field is 131 frames of 320 samples.
+PRETRAINED_FEATURIZERS["wakephonehubert-int8"] = PretrainedFeaturizer(
+    "TigreGotico/wakephonehubert", "features_int8", _APACHE,
+    "WakeHuBERT-tiny trunk with active-speaker VAD and IPA heads, 521 features",
+    41920, "343b2497cb0ef0310d163eb53e3f0f817260dbf7")
+
+
+# Stateful streaming graphs of published featurizers (wakeforge ``stream_trunk.py streamify``): the source file's
+# name with ``_stream`` before the extension, unless the repository config lists ``<variant>_stream``, at the
+# revision that holds it.
+_STREAM_REVISIONS: Dict[str, str] = {"wakehubert-tiny": "343b26ea8881b5a01447a1659555941b25220d22"}
+
+
+def resolve_streaming(name: str, config: dict) -> str:
+    """Path of the stateful streaming graph of a pretrained featurizer.
+
+    Raises:
+        ValueError: If the featurizer's repository publishes no streaming graph at the revision that holds it.
+    """
+    entry = PRETRAINED_FEATURIZERS[name]
+    source = config["files"][entry.variant]
+    filename = config["files"].get(f"{entry.variant}_stream") or source.rsplit(".", 1)[0] + "_stream.onnx"
+    revision = _STREAM_REVISIONS.get(entry.repo_id.split("/")[-1]) or entry.revision
+    try:
+        return hf_hub_download(entry.repo_id, filename, revision=revision)
+    except LocalEntryNotFoundError:
+        raise
+    except EntryNotFoundError as e:
+        raise ValueError(f"pretrained featurizer '{name}' has no streaming graph: {entry.repo_id} at {revision} "
+                         f"holds no {filename}. Set 'streaming_features: false' to featurize each window on "
+                         "its own.") from e
+
+
+def check_stream_source(session: ort.InferenceSession, source_path: str) -> None:
+    """Refuse a streaming graph that was not rewritten from ``source_path``, the featurizer the head runs on.
+
+    Raises:
+        ValueError: If the graph's ``source_sha256`` metadata is not the sha256 of ``source_path``.
+    """
+    recorded = session.get_modelmeta().custom_metadata_map.get("source_sha256")
+    with open(source_path, "rb") as f:
+        digest = hashlib.sha256(f.read()).hexdigest()
+    if recorded != digest:
+        raise ValueError(f"the streaming graph was not made from the featurizer {source_path} the head runs on "
+                         f"(source sha256 {recorded}, featurizer {digest})")
+
 
 def is_non_commercial(licence: str) -> bool:
     """True for Creative Commons NonCommercial licences (``*-nc-*``)."""
     return "-nc" in licence.lower()
 
 
-# Featurizers shipped inside this package, by Hub repository, with the revision
-# they were copied from. Resolving one of them needs no network.
-BUNDLED_REVISIONS = {"TigreGotico/wakehubert-tiny": "e30726f3a1c28bb5dffadf101fe26c97e0e3c3e1"}
-_BUNDLED_DIR = Path(__file__).parent / "featurizers"
-
-
 def resolve_pretrained(name: str, revision: Optional[str] = None) -> tuple[str, dict]:
     """Return ``(onnx_path, config)`` for a pretrained featurizer.
 
-    A featurizer bundled with this package is read from the package when no
-    other revision is pinned; any other is downloaded into the shared Hugging
-    Face cache.
+    The files are downloaded into the shared Hugging Face cache at the
+    featurizer's pinned revision, or at ``revision`` when given.
     """
     if name not in PRETRAINED_FEATURIZERS:
         raise ValueError(
@@ -116,11 +159,6 @@ def resolve_pretrained(name: str, revision: Optional[str] = None) -> tuple[str, 
         )
     entry = PRETRAINED_FEATURIZERS[name]
     rev = revision or entry.revision
-    bundled = BUNDLED_REVISIONS.get(entry.repo_id)
-    if bundled and rev in (None, bundled):
-        folder = _BUNDLED_DIR / entry.repo_id.split("/", 1)[1]
-        config = json.loads((folder / "config.json").read_text(encoding="utf-8"))
-        return str(folder / config["files"][entry.variant]), config
     config_path = hf_hub_download(entry.repo_id, "config.json", revision=rev)
     with open(config_path, encoding="utf-8") as f:
         config = json.load(f)
@@ -144,6 +182,7 @@ class PretrainedOnnxFeaturizer:
     context_samples: int
     streaming: bool
     license: str = ""
+    config: Optional[dict] = None
 
     @classmethod
     def from_pretrained(cls, name: str, revision: Optional[str] = None,
@@ -169,7 +208,12 @@ class PretrainedOnnxFeaturizer:
             context_samples=context or 0,
             streaming=bool(config.get("streaming", False)) and context is not None,
             license=licence,
+            config=config,
         )
+
+    def streaming_path(self) -> str:
+        """Download the stateful streaming graph of this featurizer (see :func:`resolve_streaming`)."""
+        return resolve_streaming(self.name, self.config or {})
 
 
 class OnnxWindowedWakeWord:
@@ -184,6 +228,11 @@ class OnnxWindowedWakeWord:
     - with context: each chunk is featurized together with ``context_samples``
       of past audio, so its frames equal the frames of the same audio
       featurized offline, and the head scores the last ``window`` of them.
+    - streamed: a stateful streaming graph of the featurizer carries every
+      layer's past between chunks and computes only the new frames, which
+      equal those of the whole stream featurized at once; the head scores
+      the last ``window`` of them. A stream starts after ``window`` frames of
+      silence, as an isolated window starts zero-filled.
 
     Args:
         featurizer_path: Feature extractor ONNX, ``[1, samples] -> [1, frames, F]``.
@@ -196,16 +245,22 @@ class OnnxWindowedWakeWord:
             limited to 0.25-4x, so a quiet or hot microphone scores like a
             normal one and silence stays quiet.
         threads: Intra-op threads per ONNX session.
+        stream_path: Stateful streaming graph of the featurizer; when given,
+            frames are streamed and ``isolated`` and ``agc`` do not apply.
     """
 
     def __init__(self, featurizer_path: str, head_path: str, window: int,
                  hop_samples: int, context_samples: int, isolated: bool = False,
-                 agc: bool = False, threads: int = 1) -> None:
+                 agc: bool = False, threads: int = 1, stream_path: Optional[str] = None) -> None:
+        if stream_path and (isolated or agc):
+            raise ValueError("streamed features replace isolated windows; agc levels an isolated window "
+                             "and has no streamed equivalent")
         providers, so = ["CPUExecutionProvider"], session_options(threads)
-        self.ext = ort.InferenceSession(featurizer_path, so, providers=providers)
+        self.stream = StreamingFeaturizer(stream_path, hop_samples, threads) if stream_path else None
+        if self.stream:
+            check_stream_source(self.stream.session, featurizer_path)
+        self.ext = None if self.stream else shared_session(featurizer_path, threads)
         self.head = ort.InferenceSession(head_path, so, providers=providers)
-        self._ext_in = self.ext.get_inputs()[0].name
-        self._ext_out = self.ext.get_outputs()[0].name
         self._head_in = self.head.get_inputs()[0].name
         self._head_out = self.head.get_outputs()[0].name
         self.window = window
@@ -217,7 +272,7 @@ class OnnxWindowedWakeWord:
 
     @classmethod
     def from_extractor(cls, extractor, head_path: str, window: int, isolated: bool = False,
-                       agc: bool = False, threads: int = 1) -> "OnnxWindowedWakeWord":
+                       agc: bool = False, threads: int = 1, streamed: bool = False) -> "OnnxWindowedWakeWord":
         """Build a scorer for a :class:`PretrainedOnnxFeaturizer`.
 
         Raises:
@@ -232,21 +287,27 @@ class OnnxWindowedWakeWord:
         return cls(extractor.model_path, head_path, window=window,
                    hop_samples=extractor.hop_samples,
                    context_samples=extractor.context_samples,
-                   isolated=isolated, agc=agc, threads=threads)
+                   isolated=isolated and not streamed, agc=agc, threads=threads,
+                   stream_path=extractor.streaming_path() if streamed else None)
 
     def reset(self) -> None:
         """Clear the carried audio and feature window."""
         self._ctx = np.zeros(0, dtype=np.float32)
         self._audio = np.zeros(self.window * self.hop, dtype=np.float32)
         self._feats: Optional[np.ndarray] = None
+        if self.stream:
+            self.stream.reset()
+            self._feats = self.stream.push(self._audio)
 
     def _featurize(self, audio: np.ndarray) -> np.ndarray:
-        return self.ext.run([self._ext_out], {self._ext_in: audio[np.newaxis, :]})[0]
+        return featurize(self.ext, audio[np.newaxis, :])
 
     def push(self, audio_chunk: np.ndarray) -> float:
         """Feed one chunk (a multiple of the hop) and return the head's probability."""
         chunk = audio_chunk.astype(np.float32)
-        if self.isolated:
+        if self.stream:
+            self._feats = np.concatenate([self._feats, self.stream.push(chunk)], axis=1)[:, -self.window:, :]
+        elif self.isolated:
             self._audio = np.concatenate([self._audio, chunk])[-self.window * self.hop:]
             audio = self._audio
             if self.agc:

@@ -78,15 +78,14 @@ def test_refractory_ignores_detections_for_two_seconds():
 
 
 
-def test_wake_up_has_no_other_engine_and_skips_cleanly(offline):
-    # wake_up is only bundled with this plugin; openWakeWord, microWakeWord and
+def test_wake_up_has_no_other_engine_and_skips_cleanly():
+    # wake_up is only a model of this plugin; openWakeWord, microWakeWord and
     # precise-onnx have no model for it and must be skipped cleanly, not crash
     # the comparison.
     args = demo.parse_args(["--wakeword", "wake_up"])
     engines, skipped = demo.build_engines(args)
     assert [e.name for e in engines] == ["wakehubert"]
-    assert {s.split(":")[0] for s in skipped} == {"wakehubert-synthetic", "openwakeword", "microwakeword",
-                                                  "precise-onnx"}
+    assert {s.split(":")[0] for s in skipped} == {"openwakeword", "microwakeword", "precise-onnx"}
 
 
 def test_only_selects_engines_and_failures_are_reported(monkeypatch):
@@ -107,8 +106,8 @@ def test_panel_shows_bars_triggers_detections_and_failures():
         assert expected in text, expected
 
 
-@pytest.mark.parametrize("word, trigger", [("hey_mycroft", 0.965), ("wake_up", 0.990)])
-def test_wakehubert_engine_scores_a_clip_through_the_plugin(offline, word, trigger):
+@pytest.mark.parametrize("word, trigger", [("hey_mycroft", 0.18), ("wake_up", 0.36)])
+def test_wakehubert_engine_scores_a_clip_through_the_plugin(word, trigger):
     engine = demo.WakeHuBERT(word)
     assert engine.line == trigger
     found = demo.score_file(str(CLIPS / f"{word}.wav"), [engine])

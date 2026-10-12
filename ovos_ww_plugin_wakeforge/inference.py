@@ -1,12 +1,16 @@
 # Vendored from wakeforge/inference.py (https://github.com/TigreGotico/wakeforge).
 # wakeforge is the source of truth — keep this copy in sync on runtime changes.
-# Local addition: session_options() and the `threads` arguments.
+# Local addition: session_options(), shared_session(), featurize(), StreamingFeaturizer and the `threads` arguments.
 # Pure runtime: numpy + onnxruntime only, no torch.
 """ONNX-only wake word inference — no PyTorch dependency at runtime."""
 from __future__ import annotations
 
+import hashlib
 import math
-from collections import deque
+import os
+import threading
+import weakref
+from collections import OrderedDict, deque
 from typing import Optional
 
 import numpy as np
@@ -22,6 +26,122 @@ def session_options(threads: int = 1) -> ort.SessionOptions:
     options.add_session_config_entry("session.intra_op.allow_spinning", "0")
     options.add_session_config_entry("session.inter_op.allow_spinning", "0")
     return options
+
+
+_SESSIONS: "weakref.WeakValueDictionary[tuple, ort.InferenceSession]" = weakref.WeakValueDictionary()
+_OUTPUTS: "weakref.WeakKeyDictionary[ort.InferenceSession, OrderedDict]" = weakref.WeakKeyDictionary()
+_LOCK = threading.Lock()
+# Windows whose featurizer output is kept per session: one listener chunk makes one new window per
+# distinct input, and every hotword on the same featurizer asks for it within that chunk.
+RECENT_WINDOWS = 4
+# Chunks of a streaming featurizer kept per session, keyed by the stream they continue: every hotword on the same
+# stream pushes the same chunk within one listener chunk, and a reset stream primes itself with one more.
+_STREAMS: "weakref.WeakKeyDictionary[ort.InferenceSession, OrderedDict]" = weakref.WeakKeyDictionary()
+RECENT_STREAM_CHUNKS = 8
+
+
+def shared_session(path: str, threads: int = 1,
+                   level: ort.GraphOptimizationLevel = ort.GraphOptimizationLevel.ORT_ENABLE_ALL,
+                   providers: "tuple[str, ...]" = ("CPUExecutionProvider",)) -> ort.InferenceSession:
+    """The process's session for a featurizer file, thread count, graph optimisation level and providers.
+
+    Every detector that loads the same featurizer the same way holds the same session, so its weights are
+    in memory once; the session is released with the last detector that holds it.
+    """
+    key = (os.path.realpath(path), threads, level, tuple(providers))
+    with _LOCK:
+        session = _SESSIONS.get(key)
+        if session is None:
+            options = session_options(threads)
+            options.graph_optimization_level = level
+            session = ort.InferenceSession(path, options, providers=list(providers))
+            _SESSIONS[key] = session
+            _OUTPUTS[session] = OrderedDict()
+    return session
+
+
+def featurize(session: ort.InferenceSession, audio: np.ndarray) -> np.ndarray:
+    """Run a featurizer session on ``audio``, reusing its output for input it ran on moments ago.
+
+    Hotwords fed the same audio featurize the same window; only an input with exactly the same shape
+    and bytes reuses an output, so a score never changes. The output is read-only.
+    """
+    audio = np.ascontiguousarray(audio, dtype=np.float32)
+    key = (audio.shape, hashlib.blake2b(audio.tobytes(), digest_size=16).digest())
+    with _LOCK:
+        recent = _OUTPUTS.setdefault(session, OrderedDict())
+        feats = recent.get(key)
+    if feats is None:
+        feats = session.run([session.get_outputs()[0].name], {session.get_inputs()[0].name: audio})[0]
+        feats.flags.writeable = False
+        with _LOCK:
+            recent[key] = feats
+            while len(recent) > RECENT_WINDOWS:
+                recent.popitem(last=False)
+    return feats
+
+
+class StreamingFeaturizer:
+    """One listener's stream through a stateful featurizer graph.
+
+    The graph (``stream_trunk.py streamify`` in wakeforge) takes ``waveform`` [1, samples], a whole number of hops,
+    and one state input per causal layer, and returns ``features`` and the next state of each layer. The session is
+    the process's shared one for the file. Fed block by block from the zero state, it returns the frames the source
+    featurizer computes over the whole stream at once.
+
+    A stream is named by everything it has been fed since its last reset, so hotwords fed the same audio share one
+    featurizer run per chunk: the first to push a chunk computes its frames and next state, and the others read
+    them. A stream fed different audio, or reset at another moment, has another name and runs on its own.
+    """
+
+    def __init__(self, path: str, hop_samples: int, threads: int = 1) -> None:
+        self.session = shared_session(path, threads)
+        self.hop = hop_samples
+        inputs = self.session.get_inputs()
+        self._wav = inputs[0].name
+        self._names = [i.name for i in inputs[1:]]
+        self._shapes = [i.shape for i in inputs[1:]]
+        if not self._names or not all(isinstance(d, int) for s in self._shapes for d in s):
+            raise ValueError(f"{path} is not a stateful streaming featurizer: it needs state inputs of fixed shape "
+                             "after the waveform")
+        self._outputs = [o.name for o in self.session.get_outputs()]
+        if len(self._outputs) != len(self._names) + 1:
+            raise ValueError(f"{path}: {len(self._names)} state inputs but {len(self._outputs) - 1} state outputs")
+        self.reset()
+
+    def reset(self) -> None:
+        """Start a new stream: every state at zero, as before the first sample."""
+        self.state = [np.zeros(s, dtype=np.float32) for s in self._shapes]
+        self._name = b""
+
+    def push(self, audio: np.ndarray) -> np.ndarray:
+        """Feature frames ``[1, frames, D]`` of ``audio``, a whole number of hops, continuing the stream. The
+        frames and the state are read-only.
+
+        Raises:
+            ValueError: If ``audio`` is not a whole number of hops: the graph would drop the remainder and the
+                stream would lose its place without any error.
+        """
+        audio = np.ascontiguousarray(audio, dtype=np.float32)
+        if audio.size % self.hop:
+            raise ValueError(f"{audio.size} samples is not a whole number of {self.hop}-sample hops")
+        name = hashlib.blake2b(self._name + audio.tobytes(), digest_size=16).digest()
+        with _LOCK:
+            recent = _STREAMS.setdefault(self.session, OrderedDict())
+            hit = recent.get(name)
+        if hit is None:
+            feeds = {self._wav: audio[np.newaxis, :]}
+            feeds.update(zip(self._names, self.state))
+            hit = self.session.run(self._outputs, feeds)
+            for out in hit:
+                out.flags.writeable = False
+            with _LOCK:
+                recent[name] = hit
+                while len(recent) > RECENT_STREAM_CHUNKS:
+                    recent.popitem(last=False)
+        self._name = name
+        feats, *self.state = hit
+        return feats
 
 
 class PredictionSmoother:
@@ -157,7 +277,7 @@ class OnnxWakeWordInferencer:
         providers = (["CUDAExecutionProvider", "CPUExecutionProvider"]
                      if device == "cuda" else ["CPUExecutionProvider"])
         so = session_options(threads)
-        self.extractor = ort.InferenceSession(extractor_path, so, providers=providers)
+        self.extractor = shared_session(extractor_path, threads, providers=tuple(providers))
         self.head = ort.InferenceSession(head_path, so, providers=providers)
         self.vad = ort.InferenceSession(vad_path, so, providers=providers) if vad_path else None
         self.text_ext = (
@@ -167,8 +287,6 @@ class OnnxWakeWordInferencer:
         self._text_emb_dim = text_emb_dim
         self.sample_rate = sample_rate
 
-        self._ext_input = self.extractor.get_inputs()[0].name
-        self._ext_output = self.extractor.get_outputs()[0].name
         self._head_input = self.head.get_inputs()[0].name
         self._head_output = self.head.get_outputs()[0].name
 
@@ -242,9 +360,7 @@ class OnnxWakeWordInferencer:
         if audio.ndim != 1:
             raise ValueError("audio must be a 1-D numpy array")
         wav = audio[np.newaxis, :].astype(np.float32)  # [1, T]
-        feats = self.extractor.run(
-            [self._ext_output], {self._ext_input: wav}
-        )[0]  # [1, T, F]
+        feats = featurize(self.extractor, wav)  # [1, T, F]
 
         if self.vad:
             vad_probs = self._run_vad(wav, feats.shape[1])
@@ -274,7 +390,7 @@ class OnnxWakeWordInferencer:
         if audio_batch.ndim != 2:
             raise ValueError("audio_batch must be a 2-D numpy array [B, T]")
         wav = audio_batch.astype(np.float32)
-        feats = self.extractor.run([self._ext_output], {self._ext_input: wav})[0]
+        feats = featurize(self.extractor, wav)
 
         if self.vad:
             vad_probs = self._run_vad(wav, feats.shape[1])
@@ -306,9 +422,7 @@ class OnnxWakeWordInferencer:
             smoother is provided, raw otherwise.
         """
         wav = audio_chunk[np.newaxis, :].astype(np.float32)  # [1, T_chunk]
-        new_feats = self.extractor.run(
-            [self._ext_output], {self._ext_input: wav}
-        )[0]  # [1, T_new, F]
+        new_feats = featurize(self.extractor, wav)  # [1, T_new, F]
         
         if self.vad:
             vad_probs = self._run_vad(wav, new_feats.shape[1])
@@ -366,10 +480,8 @@ class OnnxStreamingWakeWord:
                  hop_samples: int = 160, context_samples: int = 640,
                  threads: int = 1) -> None:
         providers, so = ["CPUExecutionProvider"], session_options(threads)
-        self.ext = ort.InferenceSession(featurizer_path, so, providers=providers)
+        self.ext = shared_session(featurizer_path, threads)
         self.head = ort.InferenceSession(streaming_head_path, so, providers=providers)
-        self._ext_in = self.ext.get_inputs()[0].name
-        self._ext_out = self.ext.get_outputs()[0].name
         self.window = window
         self.hidden_dim = hidden_dim
         self.hop = hop_samples            # featurizer hop (for frame accounting)
@@ -418,7 +530,7 @@ class OnnxStreamingWakeWord:
         chunk = audio_chunk.astype(np.float32)
         buf = np.concatenate([self._ctx, chunk])
         wav = buf[np.newaxis, :]
-        feats = self.ext.run([self._ext_out], {self._ext_in: wav})[0]  # [1, T, F]
+        feats = featurize(self.ext, wav)  # [1, T, F]
         # Frames attributable to the new chunk (the rest came from context).
         n_new = max(1, int(round(len(chunk) / self.hop)))
         n_new = min(n_new, feats.shape[1])
