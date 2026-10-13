@@ -50,7 +50,7 @@ Each ready model is named `wakehubert_<word>`. The model card lists all words, t
 
 ## Streaming models
 
-A model named `wakehubert_<word>_streaming` was trained on streamed features. The plugin runs the featurizer as a stateful graph. The graph carries each layer's past between 80 ms blocks and computes only the new frames, instead of featurizing the last 1.5 s again on every block. Streaming models exist for `alexa`, `hey_jarvis` and `hey_mycroft`.
+A model named `wakehubert_<word>_streaming` was trained on streamed features. The plugin runs the featurizer as a stateful graph. The graph carries each layer's past between 80 ms blocks and computes only the new frames, instead of featurizing the last 1.5 s again on every block. Streaming models exist for every word except `computer`, `marvin`, `sheila` and `stop`.
 
 ```json
 "hotwords": {

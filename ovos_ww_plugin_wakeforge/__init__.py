@@ -38,7 +38,7 @@ _FEATURIZER_META_KEYS = ("pretrained_featurizer", "featurizer")
 # A ``_streaming`` model was trained on streamed features, and its
 # ``featurizer_features`` metadata says ``streamed``.
 MODELS_REPO = "OpenVoiceOS/wakehubert-wakewords"
-MODELS_REVISION = "cc170b403add2b673345722130ea7e547b4c66c1"
+MODELS_REVISION = "2ac92d3bcf55f177a47049c3f810a78984a31ff9"
 
 
 def _download_failed(name, revision, error):
