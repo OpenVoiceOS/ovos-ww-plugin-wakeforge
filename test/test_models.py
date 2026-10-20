@@ -291,6 +291,17 @@ def test_unlisted_name_falls_through_to_the_path_behaviour(tmp_path):
             WakeForgeHotwordPlugin("x", {"model": name})
 
 
+def test_unknown_ready_model_name_names_the_revision_and_the_listed_models():
+    with pytest.raises(ValueError) as err:
+        WakeForgeHotwordPlugin("x", {"model": "wakehubert_not_a_word"})
+    message = str(err.value)
+    assert "Model not found" in message
+    assert MODELS_REVISION in message
+    assert "wakehubert_jarvis" in message
+    assert "models_revision" in message
+    assert "wakehubert_not_a_word" in message
+
+
 @pytest.mark.parametrize("word", sorted(ENTRIES))
 def test_listed_model_detects_its_wake_word(word):
     trigger = ENTRIES[word]["default_threshold"]
