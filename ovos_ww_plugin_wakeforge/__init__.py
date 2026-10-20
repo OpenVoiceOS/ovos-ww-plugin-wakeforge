@@ -99,7 +99,7 @@ class WakeForgeHotwordPlugin(HotWordEngine):
 
     A head loaded by path is calibrated the same way when its own ONNX
     metadata carries a ``default_threshold`` (a Platt-calibrated head, as
-    ``ww_trainer-train`` writes): its threshold and smoothing default to the
+    ``ww_trainer-export-plugin`` writes): its threshold and smoothing default to the
     same values as the ready models, not to the EMA/patience-3 defaults
     meant for an uncalibrated head. Config keys still override.
 
@@ -170,9 +170,15 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         entry = None
         if not model_name.startswith("http") and not isfile(expanduser(model_name)):
             try:
-                entry = model_entries(revision).get(model_name)
+                entries = model_entries(revision)
             except OSError as e:
                 raise _download_failed(model_name, revision, e) from e
+            entry = entries.get(model_name)
+            if entry is None:
+                raise ValueError(
+                    f"Model not found: '{model_name}' is not a file and not a ready model of "
+                    f"{MODELS_REPO} at revision {revision}. Ready models: {', '.join(sorted(entries))}. "
+                    "A model added to the repository later needs a newer 'models_revision'.")
         # Fires when the probability crosses the trigger; "ready-model defaults".
         ready_defaults = {"smoothing": "max", "window_size": 1, "patience": 1, "debounce_sec": 2.0}
         if entry:
@@ -188,7 +194,7 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         meta = head.get_modelmeta().custom_metadata_map
         if not entry and "default_threshold" in meta:
             # The head's own metadata says it is Platt-calibrated (as
-            # ww_trainer-train writes): score it like the ready models,
+            # ww_trainer-export-plugin writes): score it like the ready models,
             # not with the EMA/patience-3 defaults meant for an uncalibrated
             # head, which never cross a calibrated head's near-1.0 scores.
             cfg = {"threshold": float(meta["default_threshold"]), **ready_defaults}
