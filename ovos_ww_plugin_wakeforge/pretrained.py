@@ -22,8 +22,8 @@ import onnxruntime as ort
 from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import EntryNotFoundError, LocalEntryNotFoundError
 
-from ovos_ww_plugin_wakeforge.inference import (StreamingFeaturizer, featurize, session_options,
-                                                 shared_session)
+from ovos_ww_plugin_wakeforge.inference import (StreamingFeaturizer, featurize, model_source,
+                                                 session_options, shared_session)
 
 logger = logging.getLogger(__name__)
 
@@ -260,7 +260,7 @@ class OnnxWindowedWakeWord:
         if self.stream:
             check_stream_source(self.stream.session, featurizer_path)
         self.ext = None if self.stream else shared_session(featurizer_path, threads)
-        self.head = ort.InferenceSession(head_path, so, providers=providers)
+        self.head = ort.InferenceSession(model_source(head_path), so, providers=providers)
         self._head_in = self.head.get_inputs()[0].name
         self._head_out = self.head.get_outputs()[0].name
         self.window = window
