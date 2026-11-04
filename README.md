@@ -113,6 +113,7 @@ Set `model` to the classifier ONNX that wakeforge exported. Set `featurizer` to 
 | `models_revision` | pinned | Hugging Face revision of the ready-model repository |
 | `featurizer_revision` | pinned | Hugging Face revision of a pretrained featurizer |
 | `onnx_threads` | `1` | threads per ONNX session |
+| `head_skip_below` | off | while the last score is below this (try `0.01`), score every other block and repeat the last score in between: about a third less CPU (a Raspberry Pi 4 went from 104 to 71 ms per second of audio), and a detection whose score jumps within one block comes 80 ms later; the featurizer still runs on every block |
 
 The source documents the other keys (`smoothing`, `patience`, `window_size`, `ema_alpha`, `block_ms`, `streaming`, `gru_window`, `isolated_windows`, `hidden_dim`, `vad`) in `ovos_ww_plugin_wakeforge/__init__.py`. URL models are cached under `${XDG_DATA_HOME}/wakeforge/`.
 
