@@ -247,11 +247,19 @@ class OnnxWindowedWakeWord:
         threads: Intra-op threads per ONNX session.
         stream_path: Stateful streaming graph of the featurizer; when given,
             frames are streamed and ``isolated`` and ``agc`` do not apply.
+        skip_below: While the last score is below this, score only every other
+            chunk and repeat the last score in between (``None``: every chunk).
+            The head is most of the CPU (about two thirds on a Raspberry Pi 4);
+            this halves it whenever nothing sounds like the word. Streamed frames
+            are still computed on every chunk, so the scores the head does
+            compute are unchanged; a word whose score jumps above the threshold
+            within one chunk is reported one chunk later.
     """
 
     def __init__(self, featurizer_path: str, head_path: str, window: int,
                  hop_samples: int, context_samples: int, isolated: bool = False,
-                 agc: bool = False, threads: int = 1, stream_path: Optional[str] = None) -> None:
+                 agc: bool = False, threads: int = 1, stream_path: Optional[str] = None,
+                 skip_below: Optional[float] = None) -> None:
         if stream_path and (isolated or agc):
             raise ValueError("streamed features replace isolated windows; agc levels an isolated window "
                              "and has no streamed equivalent")
@@ -268,11 +276,13 @@ class OnnxWindowedWakeWord:
         self.context = context_samples
         self.isolated = isolated
         self.agc = agc
+        self.skip_below = skip_below
         self.reset()
 
     @classmethod
     def from_extractor(cls, extractor, head_path: str, window: int, isolated: bool = False,
-                       agc: bool = False, threads: int = 1, streamed: bool = False) -> "OnnxWindowedWakeWord":
+                       agc: bool = False, threads: int = 1, streamed: bool = False,
+                       skip_below: Optional[float] = None) -> "OnnxWindowedWakeWord":
         """Build a scorer for a :class:`PretrainedOnnxFeaturizer`.
 
         Raises:
@@ -288,13 +298,14 @@ class OnnxWindowedWakeWord:
                    hop_samples=extractor.hop_samples,
                    context_samples=extractor.context_samples,
                    isolated=isolated and not streamed, agc=agc, threads=threads,
-                   stream_path=extractor.streaming_path() if streamed else None)
+                   stream_path=extractor.streaming_path() if streamed else None, skip_below=skip_below)
 
     def reset(self) -> None:
         """Clear the carried audio and feature window."""
         self._ctx = np.zeros(0, dtype=np.float32)
         self._audio = np.zeros(self.window * self.hop, dtype=np.float32)
         self._feats: Optional[np.ndarray] = None
+        self._last, self._pushes = 0.0, 0
         if self.stream:
             self.stream.reset()
             self._feats = self.stream.push(self._audio)
@@ -305,10 +316,14 @@ class OnnxWindowedWakeWord:
     def push(self, audio_chunk: np.ndarray) -> float:
         """Feed one chunk (a multiple of the hop) and return the head's probability."""
         chunk = audio_chunk.astype(np.float32)
+        self._pushes += 1
+        skip = self.skip_below is not None and self._pushes % 2 == 0 and self._last < self.skip_below
         if self.stream:
             self._feats = np.concatenate([self._feats, self.stream.push(chunk)], axis=1)[:, -self.window:, :]
         elif self.isolated:
             self._audio = np.concatenate([self._audio, chunk])[-self.window * self.hop:]
+            if skip:                     # an isolated window is featurized only for the head
+                return self._last
             audio = self._audio
             if self.agc:
                 audio = audio * np.clip(0.5 / (np.abs(audio).max() + 1e-6), 0.25, 4.0)
@@ -321,5 +336,8 @@ class OnnxWindowedWakeWord:
             self._feats = new if self._feats is None else np.concatenate([self._feats, new], axis=1)
             self._feats = self._feats[:, -self.window:, :]
             self._ctx = buf[-self.context:] if self.context else np.zeros(0, dtype=np.float32)
+        if skip:
+            return self._last
         logit = self.head.run([self._head_out], {self._head_in: self._feats.astype(np.float32)})[0]
-        return float(1.0 / (1.0 + np.exp(-float(np.asarray(logit).ravel()[0]))))
+        self._last = float(1.0 / (1.0 + np.exp(-float(np.asarray(logit).ravel()[0]))))
+        return self._last
