@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import math
 import os
+import sys
 import threading
 import weakref
 from collections import OrderedDict, deque
@@ -19,13 +20,44 @@ import onnxruntime as ort
 
 def session_options(threads: int = 1) -> ort.SessionOptions:
     """Options for an always-on detector: `threads` intra-op threads, one inter-op
-    thread, and no spin-waiting between the small runs a stream makes."""
+    thread, no spin-waiting between the small runs a stream makes, and int8
+    kernels that give the same result on every x86 CPU.
+
+    An int8 featurizer (QuantizeLinear/DequantizeLinear around its convolutions,
+    as ``wakehubert-int8``) is fused into ``QLinearConv`` from
+    ``ORT_ENABLE_EXTENDED`` on. On x86 CPUs without AVX-512 VNNI (AVX2: most
+    desktops, laptops and cloud VMs before 2020), onnxruntime's default u8s8
+    kernel sums pairs of products in 16 bits and saturates, so frames come out
+    several percent off those of a VNNI or ARM CPU, and wake scores up to ~0.1
+    off the scores the model was calibrated with. ``session.x64quantprecision``
+    selects the exact 32-bit path there; it keeps int8 speed (three times faster
+    than running the graph unfused at ``ORT_ENABLE_BASIC``) and changes nothing
+    on VNNI or ARM CPUs, nor for float models.
+    """
     options = ort.SessionOptions()
     options.intra_op_num_threads = threads
     options.inter_op_num_threads = 1
     options.add_session_config_entry("session.intra_op.allow_spinning", "0")
     options.add_session_config_entry("session.inter_op.allow_spinning", "0")
+    options.add_session_config_entry("session.x64quantprecision", "1")
     return options
+
+
+def model_source(path) -> "str | bytes":
+    """What to hand onnxruntime for a model file: its path, or on Windows its bytes when the path is not ASCII.
+
+    onnxruntime has failed to open non-ASCII model paths on Windows, and a user name with an accent puts the Hugging
+    Face cache, and so every downloaded model, under one (``C:\\Users\\Zoé\\.cache``). A model whose weights sit in
+    an external-data file beside it is opened by path, as it must be.
+    """
+    path = os.fspath(path)
+    if sys.platform != "win32" or path.isascii():
+        return path
+    stem = os.path.splitext(path)[0]
+    if any(os.path.exists(x) for x in (path + ".data", stem + ".data", path + "_data")):
+        return path
+    with open(path, "rb") as f:
+        return f.read()
 
 
 _SESSIONS: "weakref.WeakValueDictionary[tuple, ort.InferenceSession]" = weakref.WeakValueDictionary()
@@ -54,7 +86,7 @@ def shared_session(path: str, threads: int = 1,
         if session is None:
             options = session_options(threads)
             options.graph_optimization_level = level
-            session = ort.InferenceSession(path, options, providers=list(providers))
+            session = ort.InferenceSession(model_source(path), options, providers=list(providers))
             _SESSIONS[key] = session
             _OUTPUTS[session] = OrderedDict()
     return session
@@ -278,10 +310,10 @@ class OnnxWakeWordInferencer:
                      if device == "cuda" else ["CPUExecutionProvider"])
         so = session_options(threads)
         self.extractor = shared_session(extractor_path, threads, providers=tuple(providers))
-        self.head = ort.InferenceSession(head_path, so, providers=providers)
-        self.vad = ort.InferenceSession(vad_path, so, providers=providers) if vad_path else None
+        self.head = ort.InferenceSession(model_source(head_path), so, providers=providers)
+        self.vad = ort.InferenceSession(model_source(vad_path), so, providers=providers) if vad_path else None
         self.text_ext = (
-            ort.InferenceSession(text_extractor_path, so, providers=providers)
+            ort.InferenceSession(model_source(text_extractor_path), so, providers=providers)
             if text_extractor_path else None
         )
         self._text_emb_dim = text_emb_dim
@@ -481,7 +513,7 @@ class OnnxStreamingWakeWord:
                  threads: int = 1) -> None:
         providers, so = ["CPUExecutionProvider"], session_options(threads)
         self.ext = shared_session(featurizer_path, threads)
-        self.head = ort.InferenceSession(streaming_head_path, so, providers=providers)
+        self.head = ort.InferenceSession(model_source(streaming_head_path), so, providers=providers)
         self.window = window
         self.hidden_dim = hidden_dim
         self.hop = hop_samples            # featurizer hop (for frame accounting)
