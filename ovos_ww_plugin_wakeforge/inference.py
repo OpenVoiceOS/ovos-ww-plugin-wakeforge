@@ -19,12 +19,26 @@ import onnxruntime as ort
 
 def session_options(threads: int = 1) -> ort.SessionOptions:
     """Options for an always-on detector: `threads` intra-op threads, one inter-op
-    thread, and no spin-waiting between the small runs a stream makes."""
+    thread, no spin-waiting between the small runs a stream makes, and int8
+    kernels that give the same result on every x86 CPU.
+
+    An int8 featurizer (QuantizeLinear/DequantizeLinear around its convolutions,
+    as ``wakehubert-int8``) is fused into ``QLinearConv`` from
+    ``ORT_ENABLE_EXTENDED`` on. On x86 CPUs without AVX-512 VNNI (AVX2: most
+    desktops, laptops and cloud VMs before 2020), onnxruntime's default u8s8
+    kernel sums pairs of products in 16 bits and saturates, so frames come out
+    several percent off those of a VNNI or ARM CPU, and wake scores up to ~0.1
+    off the scores the model was calibrated with. ``session.x64quantprecision``
+    selects the exact 32-bit path there; it keeps int8 speed (three times faster
+    than running the graph unfused at ``ORT_ENABLE_BASIC``) and changes nothing
+    on VNNI or ARM CPUs, nor for float models.
+    """
     options = ort.SessionOptions()
     options.intra_op_num_threads = threads
     options.inter_op_num_threads = 1
     options.add_session_config_entry("session.intra_op.allow_spinning", "0")
     options.add_session_config_entry("session.inter_op.allow_spinning", "0")
+    options.add_session_config_entry("session.x64quantprecision", "1")
     return options
 
 
