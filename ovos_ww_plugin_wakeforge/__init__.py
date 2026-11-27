@@ -242,6 +242,9 @@ class WakeForgeHotwordPlugin(HotWordEngine):
             else:
                 self.engine = OnnxWakeWordInferencer(featurizer, model, vad_path=vad,
                                                      device="cpu", threads=self.threads)
+        if self.config.get("head_skip_below") is not None and not isinstance(self.engine, OnnxWindowedWakeWord):
+            LOG.warning("wakeforge plugin: 'head_skip_below' applies only to a batch head on a pretrained featurizer; "
+                        f"ignored for {model}.")
         self._cache = None
         self._buffer = np.zeros(0, dtype=np.float32)
         LOG.info(f"wakeforge wake word '{self.key_phrase}' loaded "
@@ -304,7 +307,17 @@ class WakeForgeHotwordPlugin(HotWordEngine):
             self.featurizer, model, window,
             isolated=bool(self.config.get("isolated_windows", True)),
             agc=bool(self.config.get("agc", False)), threads=self.threads, streamed=streamed,
-            skip_below=None if self.config.get("head_skip_below") is None else float(self.config["head_skip_below"]))
+            skip_below=self._head_skip_below())
+
+    def _head_skip_below(self):
+        """``head_skip_below`` capped at the threshold, or ``None`` when it is not set.
+
+        A skipped block repeats the last score, and the smoother counts it as one more frame, so a floor above the
+        threshold would let a repeated above-threshold score count towards ``patience``: one real frame of 0.55 and its
+        repeat would fire at threshold 0.5 and patience 2. Capped, only a below-threshold score is ever repeated.
+        """
+        value = self.config.get("head_skip_below")
+        return None if value is None else min(float(value), self.threshold)
 
     def _resolve(self, model):
         """Resolve a model reference to a local file path, downloading URLs."""

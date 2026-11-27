@@ -47,3 +47,27 @@ def test_a_score_at_the_floor_scores_every_block(standin_hub, pcm):
     skip, runs = _scores(standin_hub, pcm, head_skip_below=0.0)      # no score is below 0: never skip
     assert runs == len(full)
     assert np.array_equal(skip, full)
+
+
+def test_a_floor_above_the_threshold_repeats_no_score_that_counts(standin_hub):
+    """A repeated score is never above the threshold: one real frame of 0.55 and its repeat would otherwise fire at
+    threshold 0.5 and patience 2, though the next real score is 0.2."""
+    head = standin_hub.batch_head(pretrained_featurizer="wakehubert", window_frames=str(WINDOW))
+    eng = WakeForgeHotwordPlugin("hey computer", {"model": head, "threshold": 0.5, "smoothing": "max",
+                                                  "window_size": 1, "patience": 2, "streaming_features": True,
+                                                  "head_skip_below": 0.9})
+    assert eng.engine.skip_below == 0.5
+    scores = iter([0.55, 0.2] * 20)
+
+    class Alternating:
+        def run(self, *a, **k):
+            p = next(scores)
+            return [np.array([[np.log(p / (1 - p))]], np.float32)]
+
+        def __getattr__(self, name):
+            return getattr(eng.engine.__dict__["_real_head"], name)
+
+    eng.engine._real_head, eng.engine.head = eng.engine.head, Alternating()
+    for _ in range(10):
+        eng.update(np.zeros(1280, np.int16).tobytes())
+    assert not eng.found_wake_word()

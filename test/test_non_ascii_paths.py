@@ -15,7 +15,7 @@ def test_model_source_reads_non_ascii_paths_on_windows(tmp_path, monkeypatch):
     model.write_bytes(b"onnx bytes")
     monkeypatch.setattr(inference.sys, "platform", "win32")
     assert model_source(model) == b"onnx bytes"
-    assert model_source(tmp_path / "plain.onnx") == str(tmp_path / "plain.onnx")
+    assert model_source("plain.onnx") == "plain.onnx"                 # ASCII: the path, even if tmp_path is not
     (tmp_path / "zoé.onnx.data").write_bytes(b"")       # external weights: keep the path
     assert model_source(model) == str(model)
     monkeypatch.setattr(inference.sys, "platform", "linux")
