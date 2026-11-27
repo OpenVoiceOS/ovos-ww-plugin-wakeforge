@@ -20,6 +20,7 @@ from ovos_ww_plugin_wakeforge.inference import (
     OnnxStreamingWakeWord,
     OnnxWakeWordInferencer,
     PredictionSmoother,
+    model_source,
     session_options,
 )
 from ovos_ww_plugin_wakeforge.pretrained import (
@@ -183,7 +184,7 @@ class WakeForgeHotwordPlugin(HotWordEngine):
             cfg = {"threshold": 0.5, "smoothing": "ema", "window_size": 5, "patience": 3,
                    "debounce_sec": 1.0}
         self.threads = int(self.config.get("onnx_threads", 1))
-        head = ort.InferenceSession(model, session_options(self.threads),
+        head = ort.InferenceSession(model_source(model), session_options(self.threads),
                                     providers=["CPUExecutionProvider"])
         meta = head.get_modelmeta().custom_metadata_map
         if not entry and "default_threshold" in meta:

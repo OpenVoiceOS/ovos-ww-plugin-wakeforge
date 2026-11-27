@@ -15,7 +15,7 @@ import soundfile as sf
 
 from test.conftest import K, make_featurizer
 from ovos_ww_plugin_wakeforge import WakeForgeHotwordPlugin
-from ovos_ww_plugin_wakeforge.inference import StreamingFeaturizer
+from ovos_ww_plugin_wakeforge.inference import StreamingFeaturizer, session_options
 
 WINDOW = 20
 
@@ -223,7 +223,9 @@ def test_published_streaming_graph_follows_the_published_featurizer():
     wav = np.concatenate([audio, np.zeros(16000, np.float32)])
     wav = wav[:len(wav) // 1280 * 1280]
     got = np.concatenate([stream.push(wav[i:i + 1280]) for i in range(0, len(wav), 1280)], axis=1)[0]
-    sess = ort.InferenceSession(feat.model_path, providers=["CPUExecutionProvider"])
+    # the reference uses the plugin's session options too: with onnxruntime's defaults an AVX2 CPU saturates its int8
+    # sums (see test_x64_int8_precision.py) and the reference, not the stream, would be off
+    sess = ort.InferenceSession(feat.model_path, session_options(), providers=["CPUExecutionProvider"])
     want = sess.run(None, {"waveform": wav[np.newaxis, :]})[0][0]
     close = np.abs(got - want).max(1) <= 1e-4
     cos = np.sum(got * want, 1) / (np.linalg.norm(got, axis=1) * np.linalg.norm(want, axis=1))
