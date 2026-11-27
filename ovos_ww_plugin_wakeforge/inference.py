@@ -48,7 +48,10 @@ def model_source(path) -> "str | bytes":
 
     onnxruntime has failed to open non-ASCII model paths on Windows, and a user name with an accent puts the Hugging
     Face cache, and so every downloaded model, under one (``C:\\Users\\Zoé\\.cache``). A model whose weights sit in
-    an external-data file beside it is opened by path, as it must be.
+    an external-data file beside it is opened by path, as it must be. The file is found by the names that the ONNX
+    exporters write (``x.onnx.data``, ``x.data``, ``x.onnx_data``); a model that names its weights file otherwise
+    (``weights.bin``) is read as bytes there and cannot find its weights. Finding every name would need ``onnx`` at
+    run time to read the model's external-data locations, and the wakeforge models keep their weights inside the file.
     """
     path = os.fspath(path)
     if sys.platform != "win32" or path.isascii():
