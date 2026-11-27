@@ -303,7 +303,8 @@ class WakeForgeHotwordPlugin(HotWordEngine):
         return OnnxWindowedWakeWord.from_extractor(
             self.featurizer, model, window,
             isolated=bool(self.config.get("isolated_windows", True)),
-            agc=bool(self.config.get("agc", False)), threads=self.threads, streamed=streamed)
+            agc=bool(self.config.get("agc", False)), threads=self.threads, streamed=streamed,
+            skip_below=None if self.config.get("head_skip_below") is None else float(self.config["head_skip_below"]))
 
     def _resolve(self, model):
         """Resolve a model reference to a local file path, downloading URLs."""
