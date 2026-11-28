@@ -64,7 +64,7 @@ _METADATA = {
 }
 # Heads trained on streamed features, which score the last 75 streamed frames.
 _STREAMED = "streamed WakeHuBERT-tiny int8 features"
-for _word in ("alexa", "hey jarvis", "hey mycroft"):
+for _word in ("alexa", "hey jarvis", "hey mycroft", "android", "aufwachen", "despierta", "hello nabu", "hey chatterbox", "hey computer", "hey floyd", "hey k9", "hey marvin", "hey potato", "hey rhasspy", "hey robin", "hey scout", "hey stemcom", "hey ziggy", "home assistant", "jarvis", "okay nabu", "sveglia", "wake up", "wakker worden"):
     _METADATA[f"wakehubert_{_word.replace(' ', '_')}_streaming"] = {"wake_word": _word, "training_data_has": _STREAMED}
 STREAMING = sorted(w for w in _METADATA if w.endswith("_streaming"))
 # Heads exported with their calibration folded into the graph, on the int8
@@ -85,6 +85,11 @@ _CONFUSED_WITH = {
     "hey_robin": {"hey_marvin", "hey_rhasspy", "okay_nabu"},
     "okay_nabu": {"hey_k9", "hey_marvin", "hey_rhasspy"},
     "sheila": {"computer"},
+    "hey_computer_streaming": {"computer"},
+    "hey_marvin_streaming": {"hey_k9", "hey_rhasspy", "hey_robin", "okay_nabu"},
+    "hey_robin_streaming": {"hey_jarvis", "hey_marvin", "hey_rhasspy"},
+    "jarvis_streaming": {"hey_jarvis"},
+    "okay_nabu_streaming": {"hello_nabu"},
 }
 
 
@@ -310,7 +315,7 @@ def test_listed_model_detects_its_wake_word(word):
 @pytest.mark.parametrize("word", sorted(ENTRIES))
 def test_listed_model_ignores_the_other_words(word):
     eng = WakeForgeHotwordPlugin(word, {"model": word})
-    others = {_clip(w) for w in ENTRIES} - {_clip(word)} - _CONFUSED_WITH.get(_clip(word), set())
+    others = {_clip(w) for w in ENTRIES} - {_clip(word)} - _CONFUSED_WITH.get(word.removeprefix("wakehubert_"), set())
     assert others
     for other in sorted(others):
         scores, fired = _run(eng, _pcm(CLIPS / f"{other}.wav"))
