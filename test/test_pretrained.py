@@ -150,7 +150,7 @@ def test_detection_fires_where_offline_crosses_threshold(standin_hub, pcm):
 
 def test_calibrated_head_by_path_uses_ready_model_defaults(standin_hub):
     # A head loaded by path whose own ONNX metadata carries default_threshold
-    # (a Platt-calibrated head, as ww_trainer-train writes) is scored like the
+    # (a Platt-calibrated head, as ww_trainer-export-plugin writes) is scored like the
     # ready models, not with the EMA/patience-3 defaults meant for an
     # uncalibrated head.
     head = standin_hub.batch_head(pretrained_featurizer="wakehubert", default_threshold="0.75")
